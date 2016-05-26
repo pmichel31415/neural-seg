@@ -19,6 +19,9 @@ function split {
     bash $SPLIT_SH $1 $SPLIT npy $2
 }
 
+mkdir splits output 2> /dev/null
+
+
 cd splits
 split $CORPUS/mfcc_npy $NAME
 cd ..
