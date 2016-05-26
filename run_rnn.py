@@ -7,10 +7,7 @@ import argparse
 from scipy.io.wavfile import read as wavread
 from scipy.signal import resample
 
-from keras.models import Sequential
-from keras.layers.core import Dense
-from keras.layers.recurrent import SimpleRNN
-from keras.layers.wrappers import TimeDistributed
+from kmodels import build_model
 
 parser = argparse.ArgumentParser(
     description='Neural speech segmentation')
@@ -70,18 +67,6 @@ def load_wav(filename):
             x=resample(x,int(16000/fs*len(x)))
         return x
     return np.array([])
-
-def build_model(dx,dh,do,length,weights=None):
-    model=Sequential()
-    model.add(SimpleRNN(
-        dh,
-        input_dim=dx,
-        return_sequences=True
-        ))
-    model.add(TimeDistributed(Dense(do)))
-    if weights is not None:
-        model.set_weights(weights)
-    return model
 
 def save_model_weights(filename,model):
     np.save(filename,np.concatenate(model.get_weights()))

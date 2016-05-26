@@ -33,5 +33,5 @@ then
 fi
 
 mkdir $OUT
-python kmodel.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -c $C -o $OUT -v
+python run_rnn.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -c $C -o $OUT -v
 
