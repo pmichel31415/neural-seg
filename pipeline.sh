@@ -15,7 +15,7 @@ EVAL_SH=`pwd`/eval.sh
 function split {
     FILES=$1
     TOT=`ls ${FILES}/*.npy | wc -l`
-    SPLIT=$((TOT / 10))
+    SPLIT=$((TOT / 2))
     bash $SPLIT_SH $1 $SPLIT npy $2
 }
 

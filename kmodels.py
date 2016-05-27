@@ -41,7 +41,7 @@ def build_stacked_lstm_dropout(dx,dh,do,length,weights=None):
         input_dim=dx,
         return_sequences=True
         ))
-    model.add(GaussianDroupout(0.5))
+    model.add(GaussianDropout(0.5))
     model.add(LSTM(
         do,
         input_dim=dh,
@@ -66,7 +66,7 @@ def build_softmax_rnn(dx,dh,do,length,weights=None):
     return model
 
 # Set model
-build_model=build_lstm
+build_model=build_stacked_lstm_dropout
 
 if __name__ == '__main__':
     dummy_params= 10,15,5,0,None
