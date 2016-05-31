@@ -50,7 +50,7 @@ if __name__ == '__main__':
         print('insertions : %.1f' % (100 * n_insertions/n_bounds), '%')
         print('deletions : %.1f' % (100 * n_deletions/n_gold), '%')
     else:
-        print(precision,recall,F_1)
+        print(n_matches,n_bounds,n_gold)
 
     if args.out_file != '':
         x=np.array(insertions)/gold[-1]
