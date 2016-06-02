@@ -58,6 +58,8 @@ def load_features(filename):
         feats = np.load(filename)
     else:
         feats = np.loadtxt(filename)
+    #feats=feats-np.mean(feats,axis=0)
+    #feats=feats/np.std(feats,axis=0)
     return feats
 
 def load_wav(filename):

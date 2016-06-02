@@ -66,7 +66,7 @@ def build_softmax_rnn(dx,dh,do,length,weights=None):
     return model
 
 # Set model
-build_model=build_stacked_lstm_dropout
+build_model=build_lstm
 
 if __name__ == '__main__':
     dummy_params= 10,15,5,0,None

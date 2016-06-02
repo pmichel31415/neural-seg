@@ -5,6 +5,7 @@
 
 import numpy as np
 from scipy.signal import convolve, argrelmax
+from scipy.fftpack import rfft,rfftfreq,irfft
 from peakdet import detect_peaks
 import argparse
 
@@ -57,6 +58,13 @@ def manual_detect(x,times,ker_len,clip,rate):
     
     return boundaries
 
+def fourier_detect(x,times,rate):
+    fr=rfftfreq(len(times),1/rate)
+    y=rfft(x)
+    y[fr>int(1/0.05)]=0
+    x_smoothed = irfft(y)
+    return times[argrelmax(x_smoothed)[0]]
+
 def auto_detect(x,times,ker_len):
     
     kernel = np.ones((int(ker_len))) / ker_len
@@ -76,7 +84,9 @@ if __name__ == '__main__':
     if opt.time_file is not None:
         times=np.loadtxt(opt.time_file)
 
-    boundaries=auto_detect(x,times,opt.ker_len)    
+    #boundaries=auto_detect(x,times,opt.ker_len)    
+    #boundaries=auto_detect(x,times,opt.ker_len)    
+    boundaries=fourier_detect(x,times,opt.rate)    
 
     np.savetxt(opt.output_file, boundaries, fmt="%.3f")
 
