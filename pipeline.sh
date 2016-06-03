@@ -4,8 +4,8 @@
 CFG_FILE=$1
 
 source $CFG_FILE
-TRAIN=`pwd`/splits/train_${NAME}.lst
-TEST=`pwd`/splits/test_${NAME}.lst
+TRAIN=`pwd`/splits/train_${SPLIT}.lst
+TEST=`pwd`/splits/test_${SPLIT}.lst
 OUT=`pwd`/output/$NAME
 RESULT_FILE=results_${NAME}.txt
 
@@ -23,9 +23,9 @@ function split {
 mkdir splits output 2> /dev/null
 
 ## Auto split
-cd splits
-split $CORPUS/mfcc_npy_$INPUT $NAME
-cd ..
+#cd splits
+#split $CORPUS/mfcc_npy_$INPUT $NAME
+#cd ..
 
 
 ## Run network (training + test)
