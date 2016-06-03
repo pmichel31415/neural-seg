@@ -26,6 +26,8 @@ parser.add_argument('-r', action='store', dest='rate',
 parser.add_argument('-k', action='store', dest='ker_len',
                     default=7.0,
                     type=float, help='Convolution kernel length')
+parser.add_argument('-m', '--method', action='store', dest='method',
+                    default='fourier', type=str, help='Input vad file')
 parser.add_argument('-o', action='store', dest='output_file',
                     required=True, type=str, help='Output file (boundaries)')
 parser.add_argument('-v', '--verbose', help='increase output verbosity',
@@ -77,16 +79,21 @@ def auto_detect(x,times,ker_len):
 if __name__ == '__main__':
     opt = parser.parse_args()
     # Load error signal
-    x = np.loadtxt(opt.input_file)
+    x = np.load(opt.input_file)
     x = x.reshape(x.size)
     
     times=np.arange(len(x))/opt.rate
     if opt.time_file is not None:
         times=np.loadtxt(opt.time_file)
-
-    #boundaries=auto_detect(x,times,opt.ker_len)    
-    #boundaries=auto_detect(x,times,opt.ker_len)    
-    boundaries=fourier_detect(x,times,opt.rate)    
+    
+    if opt.method=='fourier':
+        boundaries=fourier_detect(x,times,opt.rate)
+    elif opt.method=='auto':
+        boundaries=auto_detect(x,times,opt.ker_len)    
+    elif opt.method=='manual':
+        boundaries=manual_detect(x,times,opt.ker_len,opt.clip,opt.rate)
+    else:
+        boundaries=fourier_detect(x,times,opt.rate)
 
     np.savetxt(opt.output_file, boundaries, fmt="%.3f")
 

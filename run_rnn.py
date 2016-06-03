@@ -7,7 +7,7 @@ import argparse
 from scipy.io.wavfile import read as wavread
 from scipy.signal import resample
 
-from kmodels import build_model
+import kmodels
 
 parser = argparse.ArgumentParser(
     description='Neural speech segmentation')
@@ -43,6 +43,9 @@ parser.add_argument('-loss', '--loss_function', action='store', dest='loss',
 parser.add_argument('-l', '--lr', action='store', dest='lr',
                     default=0.01,
                     type=float, help='Learning rate')
+parser.add_argument('-mt', '--model_type', action='store', dest='model_type',
+                    default='simple_rnn',
+                    type=str, help='Model type to be used')
 parser.add_argument('-o', '--out_dir', action='store', dest='out_dir',
                     required=True,
                     type=str, help='Output dir')
@@ -71,7 +74,7 @@ def load_wav(filename):
     return np.array([])
 
 def save_model_weights(filename,model):
-    np.save(filename,np.concatenate(model.get_weights()))
+    np.savez(filename,list(model.get_weights()))
 
 def load_model_weights(filename):
     weights=np.load(filename)
@@ -114,6 +117,11 @@ if __name__ == '__main__':
         if opt.verbose:
             print(' Initializing model with random weights')
     
+    if hasattr(kmodels,'build_' + opt.model_type):
+        build_model=getattr(kmodels,'build_' + opt.model_type)
+    else:
+        print('Unknown model type :/ you\'ll have to code it yourself')
+        exit()
     model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,weights)
     if opt.verbose:
         print(' Compiling model with ')
@@ -156,7 +164,8 @@ if __name__ == '__main__':
                 train_x,train_y,
                 batch_size=1,
                 nb_epoch=1,
-                validation_split=0.0
+                validation_split=0.1,
+                verbose=2
                 )
 
     
@@ -187,8 +196,8 @@ if __name__ == '__main__':
         
         loss[1:]=np.sqrt(np.sum(np.square(y-test_y),axis=2))
         
-        out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.loss'
-        np.savetxt(out_file,loss,fmt='%.3f')
+        out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
+        np.save(out_file,loss)
     
     if opt.verbose:
         print('----------------------------------------')
