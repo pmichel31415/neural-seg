@@ -41,7 +41,7 @@ cd $CORPUS
 
 rm $RESULT_FILE 2> /dev/null
 
-printf $TEXT > $RESULT_FILE
+summarize > $RESULT_FILE
 
 ## Evaluate over any kind of segmentation
 printf "Evaluation on phone boundaries (if applicable)\n" >> $RESULT_FILE
