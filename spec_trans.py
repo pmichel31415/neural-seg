@@ -37,7 +37,7 @@ def calculate_diff(mfcc,I):
     N=len(mfcc)
     diff=np.zeros(N)
     diff[I:-I]=np.mean(np.square(sum(mfcc[n+I:N-I+n]*n for n in range(-I,I+1))/np.sum(np.arange(0,I+1)**2)),axis=1)
-
+    #diff[I:-I]=np.mean(np.square(sum(mfcc[n+I:N-I+n]*np.arange(n+I,N-I+N) for n in range(-I,I+1))/sum(np.arange(n+I,N-I+N))))
     return diff
 
 def upper_valley(b,v):
@@ -45,6 +45,24 @@ def upper_valley(b,v):
     while i<len(v)-1 and v[i]<b:
         i+=1
     return i
+
+def check_valleys(diff,i):
+    left=True
+    right=True
+    li=i-1
+    ri=i+1
+    while li>=0:
+        if li-1<0 or diff[li-1] > diff[li]: #then this is a valley
+            left = abs(diff[i]-diff[li])>=0.1*diff[i]
+            break
+        li=li-1
+    
+    while ri<len(diff):
+        if ri+1==len(diff) or diff[ri+1] > diff[ri]: #then this is a valley
+            right = abs(diff[ri]-diff[i])>=0.1*diff[i]
+            break
+        ri=ri+1
+    return left and right
 
 def post_process(diff):
     maxpeak=np.max(diff)
@@ -60,6 +78,8 @@ def post_process(diff):
 
         if diff[pb]-diff[pb-1] < threshold or diff[pb]-diff[pb+1] < threshold:
             continue
+        #if not check_valleys(diff,pb):
+        #    continue
         #j=upper_valley(pb,valleys)
         #if j>0 and valleys[j]>pb and valleys[j-1]<pb:
         #    if pb-valleys[j] < valley_threshold or pb-valleys[j-1] < valley_threshold:

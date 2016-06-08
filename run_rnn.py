@@ -9,6 +9,8 @@ from scipy.signal import resample
 
 import kmodels
 
+from keras.callbacks import EarlyStopping
+
 parser = argparse.ArgumentParser(
     description='Neural speech segmentation')
 
@@ -162,9 +164,10 @@ if __name__ == '__main__':
     
         model.fit(
                 train_x,train_y,
-                batch_size=1,
-                nb_epoch=1,
+                batch_size=3,
+                nb_epoch=10,
                 validation_split=0.1,
+                callbacks=[EarlyStopping(monitor='val_loss', patience=1, verbose=1, mode='auto')],
                 verbose=2
                 )
 
