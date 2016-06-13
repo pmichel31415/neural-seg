@@ -7,6 +7,7 @@ OPTIM=$6
 LOSS=$7
 C=$8
 MODEL=$9
+BATCH_SIZE=${10}
 
 if [[ -z $DI ]]
 then
@@ -38,6 +39,11 @@ then
     MODEL=simple_rnn
 fi
 
+if [[ -z $BATCH_SIZE ]]
+then
+    BATCH_SIZE=10
+fi
+
 mkdir $OUT
-python run_rnn.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -c $C -o $OUT -mt $MODEL -v
+python run_rnn.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -c $C -o $OUT -mt $MODEL -bs $BATCH_SIZE #-v
 

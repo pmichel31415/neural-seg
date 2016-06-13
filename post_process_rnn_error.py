@@ -33,6 +33,44 @@ parser.add_argument('-o', action='store', dest='output_file',
 parser.add_argument('-v', '--verbose', help='increase output verbosity',
                     action='store_true')
 
+def check_valleys(x,i):
+    left=True
+    right=True
+    li=i-1
+    ri=i+1
+    while li>=0:
+        if li-1<0 or x[li-1] > x[li]: #then this is a valley
+            left = abs(x[i]-x[li])>=0.1*x[i]
+            break
+        li=li-1
+    
+    while ri<len(x):
+        if ri+1==len(x) or x[ri+1] > x[ri]: #then this is a valley
+            right = abs(x[ri]-x[i])>=0.1*x[i]
+            break
+        ri=ri+1
+    return left and right
+
+def baseline_like_detect(x,times):
+    potential_boundaries=argrelmax(x)[0]
+    boundaries=[]
+    for i,pb in enumerate(potential_boundaries):
+        if pb==0 or pb == len(x):
+            boundaries.append(pb)
+            continue
+
+        if x[pb]-x[pb-1] < x[pb]*0.1 or x[pb]-x[pb+1] < x[pb]*0.1:
+            continue
+        #if not check_valleys(x,pb):
+        #    continue
+        #j=upper_valley(pb,valleys)
+        #if j>0 and valleys[j]>pb and valleys[j-1]<pb:
+        #    if pb-valleys[j] < valley_threshold or pb-valleys[j-1] < valley_threshold:
+        #        continue
+        boundaries.append(pb)
+
+    return times[boundaries]
+
 def manual_detect(x,times,ker_len,clip,rate):
 
     kernel = np.ones((int(ker_len))) / ker_len
@@ -92,6 +130,10 @@ if __name__ == '__main__':
         boundaries=auto_detect(x,times,opt.ker_len)    
     elif opt.method=='manual':
         boundaries=manual_detect(x,times,opt.ker_len,opt.clip,opt.rate)
+    elif opt.method=='baseline':
+        boundaries=baseline_like_detect(x,times)
+    elif opt.method=='none':
+        boundaries=times[argrelmax(x)[0]]
     else:
         boundaries=fourier_detect(x,times,opt.rate)
 

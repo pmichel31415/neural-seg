@@ -33,6 +33,9 @@ parser.add_argument('-dh', '--dim_hidden', action='store', dest='hidden_dim',
 parser.add_argument('-s', '--span', action='store', dest='span',
                     default=7,
                     type=int, help='BPTT time span')
+parser.add_argument('-bs', '--batch_size', action='store', dest='batch_size',
+                    default=10,
+                    type=int, help='Batch size')
 parser.add_argument('-c', '--chunk', action='store', dest='chunk_size',
                     default=6000,
                     type=int, help='Chunks in which to divide the training files')
@@ -96,6 +99,24 @@ def prep_train(data,chunk_size=6000):
     train_y=np.array(train_y)
     return train_x,train_y
 
+class DataGenerator:
+    def __init__(self, data, span, batch_size):
+        self.data = data
+        self.n=len(data)
+        self.span=span
+        self.batch_size=batch_size
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        batch_files=np.random.randint(0,self.n,size=(self.batch_size))
+        batch_idxs=np.array([np.random.randint(0,len(self.data[f])-self.span-1) for f in batch_files])
+        x=np.array([self.data[batch_files[i]][batch_idxs[i]:batch_idxs[i]+self.span] for i in range(self.batch_size)])
+        y=np.array([self.data[batch_files[i]][batch_idxs[i]+1:batch_idxs[i]+self.span+1] for i in range(self.batch_size)])
+        return (x,y)
+    def get(self):
+        return self.next()
 
 if __name__ == '__main__':
     opt = parser.parse_args()
@@ -131,7 +152,7 @@ if __name__ == '__main__':
         print(' - loss function : ' + opt.loss)
     model.compile(
             optimizer=opt.optim,
-            loss=opt.loss
+            loss=opt.loss#kmodels.last_mse
             )
     
     if opt.verbose:
@@ -143,14 +164,14 @@ if __name__ == '__main__':
 
     with open(opt.train_list, 'r') as f:
         train_files = [l for l in f.read().split('\n') if l.endswith('.npy')]
-    
+    train_data=[]
+    valid_data=[]
+    raw_data=[]
     for tf in train_files:
         if opt.verbose:
             print('         Loading training file          ')
             print(' - file :',tf)
             print('----------------------------------------')
-
-        train_data=[]
 
         current_inputs = load_features(tf)
         if current_inputs.shape[1] != opt.embed_dim:
@@ -158,18 +179,25 @@ if __name__ == '__main__':
                   ', expected', opt.embed_dim,
                   'in file', f, ', skipping to next file.')
             continue
-        
-    
-        train_x,train_y=prep_train(current_inputs,chunk_size=opt.chunk_size)
-    
-        model.fit(
-                train_x,train_y,
-                batch_size=3,
-                nb_epoch=10,
-                validation_split=0.1,
-                callbacks=[EarlyStopping(monitor='val_loss', patience=1, verbose=1, mode='auto')],
-                verbose=2
-                )
+        raw_data.append(current_inputs)
+    np.random.shuffle(raw_data)
+    valid_split=int(0.1*len(train_files))
+    valid_data=raw_data[:valid_split]
+    train_data=raw_data[valid_split:]
+
+    print(len(train_data))
+    batch_generator=DataGenerator(train_data,opt.span,opt.batch_size)
+    validation_generator=DataGenerator(valid_data,opt.span*2,opt.batch_size)
+    print(next(batch_generator)[0].shape,next(batch_generator)[1].shape)
+    model.fit_generator(
+        batch_generator,
+        sum(len(f)-opt.span for f in train_data)//2, # Sample per epoch
+        1000, # epoch
+        validation_data=validation_generator,
+        nb_val_samples=2,
+        callbacks=[EarlyStopping(monitor='val_loss', patience=3, verbose=1, mode='auto')],
+        verbose=1
+        )
 
     
     if opt.verbose:
@@ -195,10 +223,10 @@ if __name__ == '__main__':
         loss=np.zeros(len(current_inputs))
         test_x=np.array([current_inputs[:-1]])
         test_y=current_inputs[1:]
-        y=model.predict(test_x,batch_size=1,verbose=0)
+        y=model.predict_on_batch(test_x)
         
-        loss[1:]=np.sqrt(np.sum(np.square(y-test_y),axis=2))
-        
+        loss[1:]=np.sqrt(np.sum(np.square(y-test_y),axis=-1))
+        print(y.shape,test_y.shape,loss.shape)
         out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
         np.save(out_file,loss)
     

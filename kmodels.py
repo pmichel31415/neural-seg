@@ -4,10 +4,25 @@ import numpy as np
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout
+from keras.layers.normalization import BatchNormalization
 from keras.layers.recurrent import SimpleRNN, LSTM
 from keras.layers.noise import GaussianDropout
 from keras.layers.wrappers import TimeDistributed
 
+import theano
+import theano.tensor as T
+
+def build_feed_forward(dx,dh,do,length,weights=None):
+    model=Sequential()
+    model.add(TimeDistributed(Dense(
+        dh,
+        activation='sigmoid'
+        ),
+        input_shape=(1,dx)))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
 
 
 def build_simple_rnn(dx,dh,do,length,weights=None):
@@ -33,7 +48,6 @@ def build_stacked_rnn(dx,dh,do,length,weights=None):
         do,
         input_dim=dh,
         return_sequences=True,
-        activation='linear'
         ))
     if weights is not None:
         model.set_weights(weights)
@@ -62,9 +76,9 @@ def build_stacked_lstm_dropout(dx,dh,do,length,weights=None):
     model.add(LSTM(
         do,
         input_dim=dh,
-        return_sequences=True,
-        activation='linear'
+        return_sequences=True
         ))
+    model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
@@ -79,9 +93,9 @@ def build_stacked_lstm(dx,dh,do,length,weights=None):
     model.add(LSTM(
         do,
         input_dim=dh,
-        return_sequences=True,
-        activation='linear'
+        return_sequences=True
         ))
+    model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
@@ -109,6 +123,95 @@ def build_stacked_lstm_regularized(dx,dh,do,length,weights=None):
         model.set_weights(weights)
     return model
 
+def build_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True,
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        do,
+        input_dim=dh,
+        return_sequences=True,
+        activation='linear',
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def build_stacked_lstm_regularized_dropout_batchnorm(dx,dh,do,length,weights=None):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True,
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        do,
+        input_dim=dh,
+        return_sequences=True,
+        activation='linear',
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def build_overkill_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True,
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        512,
+        input_dim=dh,
+        return_sequences=True,
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        do,
+        input_dim=512,
+        return_sequences=True,
+        activation='linear',
+        W_regularizer='l2',
+        U_regularizer='l2',
+        b_regularizer='l2'
+        ))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def last_mse(y_true,y_pred):
+    yt=y_true[:,-1,:]
+    yp=y_pred[:,-1,:]
+
+    se=T.mean(T.square(yt-yp),axis=-1)
+
+    return se 
 
 def build_softmax_rnn(dx,dh,do,length,weights=None):
     model=Sequential()
