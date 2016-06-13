@@ -100,6 +100,45 @@ def build_stacked_lstm(dx,dh,do,length,weights=None):
         model.set_weights(weights)
     return model
 
+def build_stacked_lstm_stateful(dx,dh,do,length,weights=None,batch_size=5):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        batch_input_shape=(batch_size,1,dx),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(LSTM(
+        do,
+        batch_input_shape=(batch_size,1,dh),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def build_stacked_lstm_stateful_dropout(dx,dh,do,length,weights=None,batch_size=5):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        batch_input_shape=(batch_size,1,dx),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        do,
+        batch_input_shape=(batch_size,1,dh),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
 def build_stacked_lstm_regularized(dx,dh,do,length,weights=None):
     model=Sequential()
     model.add(LSTM(

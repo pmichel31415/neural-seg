@@ -99,6 +99,31 @@ def prep_train(data,chunk_size=6000):
     train_y=np.array(train_y)
     return train_x,train_y
 
+class StatefulDataGenerator:
+    def __init__(self, data, span, batch_size):
+        self.files = data
+        np.random.shuffle(self.files)
+        self.current_files=np.random.randint(0,len(data),size=(batch_size))
+        self.current_indexes=np.zeros(batch_size)
+        self.n=len(data)
+        self.batch_size=batch_size
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        for i in range(self.batch_size):
+            if self.current_indexes[i]+2>=len(self.files[self.current_files[i]]):
+                self.current_indexes[i]=0
+                self.current_files[i]=(self.current_files[i]+1) % self.n
+            else:
+                self.current_indexes[i]+=1
+        x=np.array([self.files[self.current_files[i]][self.current_indexes[i]].reshape(1,-1) for i in range(self.batch_size)])
+        y=np.array([self.files[self.current_files[i]][self.current_indexes[i]+1].reshape(1,-1) for i in range(self.batch_size)])
+        return (x,y)
+    def get(self):
+        return self.next()
+
 class DataGenerator:
     def __init__(self, data, span, batch_size):
         self.data = data
@@ -145,7 +170,7 @@ if __name__ == '__main__':
     else:
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
-    model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,weights)
+    model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,weights,None,opt.batch_size)
     if opt.verbose:
         print(' Compiling model with ')
         print(' - optimizer : ' + opt.optim)
@@ -186,8 +211,8 @@ if __name__ == '__main__':
     train_data=raw_data[valid_split:]
 
     print(len(train_data))
-    batch_generator=DataGenerator(train_data,opt.span,opt.batch_size)
-    validation_generator=DataGenerator(valid_data,opt.span*2,opt.batch_size)
+    batch_generator=StatefulDataGenerator(train_data,opt.span,opt.batch_size)
+    validation_generator=StatefulDataGenerator(valid_data,opt.span*2,opt.batch_size)
     print(next(batch_generator)[0].shape,next(batch_generator)[1].shape)
     model.fit_generator(
         batch_generator,
@@ -195,7 +220,7 @@ if __name__ == '__main__':
         1000, # epoch
         validation_data=validation_generator,
         nb_val_samples=2,
-        callbacks=[EarlyStopping(monitor='val_loss', patience=3, verbose=1, mode='auto')],
+        callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')],
         verbose=1
         )
 
@@ -221,10 +246,15 @@ if __name__ == '__main__':
         if opt.verbose:
             print('Running through file',f,'(',i,'/',len(test_files),')')
         loss=np.zeros(len(current_inputs))
-        test_x=np.array([current_inputs[:-1]])
+        test_x=np.array(current_inputs[:-1])
+        test_x=test_x.reshape(len(test_x),1,-1)
+        print(test_x.shape)
         test_y=current_inputs[1:]
-        y=model.predict_on_batch(test_x)
-        
+
+        y=model.predict(test_x,batch_size=1)
+        #y=model.predict_on_batch(test_x)
+        y=y.reshape(len(y),-1)
+        print(y.shape) 
         loss[1:]=np.sqrt(np.sum(np.square(y-test_y),axis=-1))
         print(y.shape,test_y.shape,loss.shape)
         out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
