@@ -37,6 +37,19 @@ def build_simple_rnn(dx,dh,do,length,weights=None):
         model.set_weights(weights)
     return model
 
+def build_simple_rnn_stateful(dx,dh,do,length,weights=None,batch_size=1):
+    model=Sequential()
+    model.add(SimpleRNN(
+        dh,
+        batch_input_shape=(batch_size,1,dx),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
 def build_stacked_rnn(dx,dh,do,length,weights=None):
     model=Sequential()
     model.add(SimpleRNN(
@@ -64,6 +77,20 @@ def build_lstm(dx,dh,do,length,weights=None):
     if weights is not None:
         model.set_weights(weights)
     return model
+
+def build_lstm_stateful(dx,dh,do,length,weights=None,batch_size=1):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        batch_input_shape=(batch_size,1,dx),
+        return_sequences=True,
+        stateful=True
+        ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
 
 def build_stacked_lstm_dropout(dx,dh,do,length,weights=None):
     model=Sequential()
