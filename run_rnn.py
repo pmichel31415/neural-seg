@@ -221,7 +221,7 @@ if __name__ == '__main__':
         validation_data=validation_generator,
         nb_val_samples=2,
         callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')],
-        verbose=1
+        verbose=2
         )
 
     

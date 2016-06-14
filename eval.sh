@@ -33,13 +33,14 @@ done
 #     cat $f | awk '{print $1;}' > ${f}_tmp;mv ${f}_tmp $f
 # done
 
-rm stats
+ID=`uuidgen`
+rm stats_$ID
 for f in $DIR/*.syldet
 do
     base_f=`basename $f`
-    python $EVAL_PY -g $GOLD_DIR/$base_f -b $f -t $GAP -o matches/${base_f%.syldet}_res.csv 2>>log.txt >> "stats"
+    python $EVAL_PY -g $GOLD_DIR/$base_f -b $f -t $GAP -o matches/${base_f%.syldet}_res.csv 2>>log.txt >> "stats_$ID"
 done
 
-cat stats | awk '{ M += $1;B+=$2;G+=$3} END { print M/B;print M/G;print 2*M/(B+G) }'
+cat stats_$ID | awk '{ M += $1;B+=$2;G+=$3} END { print M/B;print M/G;print 2*M/(B+G) }'
 
-rm stats log.txt
+rm stats_$ID log.txt
