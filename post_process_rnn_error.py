@@ -40,16 +40,16 @@ def check_valleys(x,i):
     ri=i+1
     while li>=0:
         if li-1<0 or x[li-1] > x[li]: #then this is a valley
-            left = abs(x[i]-x[li])>=0.1*x[i]
+            left = abs(x[i]-x[li])>=1
             break
         li=li-1
     
-    while ri<len(x):
-        if ri+1==len(x) or x[ri+1] > x[ri]: #then this is a valley
-            right = abs(x[ri]-x[i])>=0.1*x[i]
-            break
-        ri=ri+1
-    return left and right
+    #while ri<len(x):
+    #    if ri+1==len(x) or x[ri+1] > x[ri]: #then this is a valley
+    #        right = abs(x[ri]-x[i])>=0.1*x[i]
+    #        break
+    #    ri=ri+1
+    return left #and right
 
 def baseline_like_detect(x,times):
     potential_boundaries=argrelmax(x)[0]
@@ -59,10 +59,10 @@ def baseline_like_detect(x,times):
             boundaries.append(pb)
             continue
 
-        if x[pb]-x[pb-1] < x[pb]*0.1 or x[pb]-x[pb+1] < x[pb]*0.1:
-            continue
-        #if not check_valleys(x,pb):
+        #if x[pb]-x[pb-1] < x[pb]*0.1 or x[pb]-x[pb+1] < x[pb]*0.1:
         #    continue
+        if not check_valleys(x,pb):
+            continue
         #j=upper_valley(pb,valleys)
         #if j>0 and valleys[j]>pb and valleys[j-1]<pb:
         #    if pb-valleys[j] < valley_threshold or pb-valleys[j-1] < valley_threshold:
