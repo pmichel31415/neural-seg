@@ -18,6 +18,8 @@ parser.add_argument('-vad', action='store', dest='vad_file',
                     default='', type=str, help='Input vad file')
 parser.add_argument('-t','--times', action='store', dest='time_file',
                     default=None, type=str, help='Input time file')
+parser.add_argument('-n','--num', action='store', dest='num',
+                    default=5, type=float, help='Num')
 parser.add_argument('-c', action='store', dest='clip',
                     default=0, type=float, help='Clip limit')
 parser.add_argument('-r', action='store', dest='rate',
@@ -33,14 +35,14 @@ parser.add_argument('-o', action='store', dest='output_file',
 parser.add_argument('-v', '--verbose', help='increase output verbosity',
                     action='store_true')
 
-def check_valleys(x,i):
+def check_valleys(x,i,threshold=1):
     left=True
     right=True
     li=i-1
     ri=i+1
     while li>=0:
         if li-1<0 or x[li-1] > x[li]: #then this is a valley
-            left = abs(x[i]-x[li])>=1
+            left = abs(x[i]-x[li])>=threshold*np.mean(x)
             break
         li=li-1
     
@@ -51,7 +53,28 @@ def check_valleys(x,i):
     #    ri=ri+1
     return left #and right
 
-def baseline_like_detect(x,times):
+def cliffs(x):
+    potential_boundaries=argrelmax(x)[0]
+    ret=[]
+    for i,pb in enumerate(potential_boundaries):
+        li=i-1
+        left=abs(x[i]-x[0])
+        while li>=0:
+            if li-1<0 or x[li-1] > x[li]: #then this is a valley
+                left = abs(x[i]-x[li])
+            break
+            li=li-1
+        ret.append([pb,left])
+    return ret
+
+def greedy_detect(x,times,num=5):
+    diffs=np.array(cliffs(x))
+    diffs=diffs[diffs[:,1].argsort()]
+    lim = int(len(x)/num)
+    diffs=np.sort(diffs[-lim:,0]).astype(int)
+    return times[diffs]
+
+def baseline_like_detect(x,times,threshold=1):
     potential_boundaries=argrelmax(x)[0]
     boundaries=[]
     for i,pb in enumerate(potential_boundaries):
@@ -61,7 +84,7 @@ def baseline_like_detect(x,times):
 
         #if x[pb]-x[pb-1] < x[pb]*0.1 or x[pb]-x[pb+1] < x[pb]*0.1:
         #    continue
-        if not check_valleys(x,pb):
+        if not check_valleys(x,pb,threshold):
             continue
         #j=upper_valley(pb,valleys)
         #if j>0 and valleys[j]>pb and valleys[j-1]<pb:
@@ -131,7 +154,9 @@ if __name__ == '__main__':
     elif opt.method=='manual':
         boundaries=manual_detect(x,times,opt.ker_len,opt.clip,opt.rate)
     elif opt.method=='baseline':
-        boundaries=baseline_like_detect(x,times)
+        boundaries=baseline_like_detect(x,times,threshold=opt.num)
+    elif opt.method=='greedy':
+        boundaries=greedy_detect(x,times,opt.num)
     elif opt.method=='none':
         boundaries=times[argrelmax(x)[0]]
     else:

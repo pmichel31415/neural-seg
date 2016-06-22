@@ -13,20 +13,20 @@ GOLD_DIR=${TYPE}_gold
 #     python ../../thetaOscillator/thetaOscillator_py/SylSegDemo.py $f -o syldet/${base_f%.wav}.syldet >> log.txt
 # done
 
-rm -r $GOLD_DIR
-mkdir $GOLD_DIR
+#rm -r $GOLD_DIR
+#mkdir $GOLD_DIR
 
-for f in $TYPE/*.$TYPE 
-do
-    base_f=`basename $f`
-    cat $f | awk '{printf("%.2f\n",$1);}' > $GOLD_DIR/${base_f%.$TYPE}.syldet
-done
+#for f in $TYPE/*.$TYPE 
+#do
+#    base_f=`basename $f`
+#    cat $f | awk '{printf("%.2f\n",$1);}' > $GOLD_DIR/${base_f%.$TYPE}.syldet
+#done
 
-for f in $TYPE/*.$TYPE 
-do
-    base_f=`basename $f`
-    tail -n 1 $f | awk '{printf("%.2f\n",$2);}' >> $GOLD_DIR/${base_f%.$TYPE}.syldet
-done
+#for f in $TYPE/*.$TYPE 
+#do
+#    base_f=`basename $f`
+#    tail -n 1 $f | awk '{printf("%.2f\n",$2);}' >> $GOLD_DIR/${base_f%.$TYPE}.syldet
+#done
 
 # for f in syldet/*.syldet 
 # do 

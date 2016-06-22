@@ -100,13 +100,14 @@ def prep_train(data,chunk_size=6000):
     return train_x,train_y
 
 class StatefulDataGenerator:
-    def __init__(self, data, span, batch_size):
+    def __init__(self, data, span, batch_size,model=None):
         self.files = data
         np.random.shuffle(self.files)
         self.current_files=np.random.randint(0,len(data),size=(batch_size))
         self.current_indexes=np.zeros(batch_size)
         self.n=len(data)
         self.batch_size=batch_size
+        self.model=model
 
     def __iter__(self):
         return self
@@ -116,6 +117,8 @@ class StatefulDataGenerator:
             if self.current_indexes[i]+2>=len(self.files[self.current_files[i]]):
                 self.current_indexes[i]=0
                 self.current_files[i]=(self.current_files[i]+1) % self.n
+                if self.model is not None:
+                    self.model.reset_states()
             else:
                 self.current_indexes[i]+=1
         x=np.array([self.files[self.current_files[i]][self.current_indexes[i]].reshape(1,-1) for i in range(self.batch_size)])
@@ -211,7 +214,7 @@ if __name__ == '__main__':
     train_data=raw_data[valid_split:]
 
     print(len(train_data))
-    batch_generator=StatefulDataGenerator(train_data,opt.span,opt.batch_size)
+    batch_generator=StatefulDataGenerator(train_data,opt.span,opt.batch_size,model)
     validation_generator=StatefulDataGenerator(valid_data,opt.span*2,opt.batch_size)
     print(next(batch_generator)[0].shape,next(batch_generator)[1].shape)
     model.fit_generator(
@@ -219,7 +222,7 @@ if __name__ == '__main__':
         sum(len(f)-opt.span for f in train_data)//2, # Sample per epoch
         1000, # epoch
         validation_data=validation_generator,
-        nb_val_samples=2,
+        nb_val_samples=10,
         callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')],
         verbose=2
         )
@@ -245,19 +248,26 @@ if __name__ == '__main__':
             continue
         if opt.verbose:
             print('Running through file',f,'(',i,'/',len(test_files),')')
+        y=np.zeros((len(current_inputs),opt.embed_dim))
         loss=np.zeros(len(current_inputs))
         test_x=np.array(current_inputs[:-1])
         test_x=test_x.reshape(len(test_x),1,-1)
         print(test_x.shape)
         test_y=current_inputs[1:]
 
-        y=model.predict(test_x,batch_size=1)
+        res=model.predict(test_x,batch_size=1)
         #y=model.predict_on_batch(test_x)
-        y=y.reshape(len(y),-1)
+        y[1:]=res.reshape(len(res),-1)
         print(y.shape) 
-        loss[1:]=np.sqrt(np.sum(np.square(y-test_y),axis=-1))
+        
+        cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
+        
+        #loss[1:]=1-cosine
+        loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
+        
         print(y.shape,test_y.shape,loss.shape)
         out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
+        np.save( opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.npy',y)
         np.save(out_file,loss)
     
     if opt.verbose:

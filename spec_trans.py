@@ -78,8 +78,8 @@ def post_process(diff):
 
         if diff[pb]-diff[pb-1] < threshold or diff[pb]-diff[pb+1] < threshold:
             continue
-        #if not check_valleys(diff,pb):
-        #    continue
+        if not check_valleys(diff,pb):
+            continue
         #j=upper_valley(pb,valleys)
         #if j>0 and valleys[j]>pb and valleys[j-1]<pb:
         #    if pb-valleys[j] < valley_threshold or pb-valleys[j-1] < valley_threshold:
