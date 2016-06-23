@@ -3,7 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 
 from keras.models import Sequential
-from keras.layers.core import Dense, Dropout
+from keras.layers.core import Dense, Dropout, Activation
 from keras.layers.normalization import BatchNormalization
 from keras.layers.recurrent import SimpleRNN, LSTM
 from keras.layers.noise import GaussianDropout
@@ -91,6 +91,33 @@ def build_lstm_stateful(dx,dh,do,length,weights=None,batch_size=1):
         model.set_weights(weights)
     return model
 
+def build_test_lstm_softmax(dx,dh,do,weights):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True
+        ))
+    model.add(TimeDistributed(Dense(do)))
+    model.add(TimeDistributed(Activation('softmax')))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+
+def build_lstm_stateful_softmax(dx,dh,do,length=1,weights=None,batch_size=1):
+    model=Sequential()
+    model.add(LSTM(
+        dh,
+        batch_input_shape=(batch_size,length,dx),
+        return_sequences=False,
+        stateful=True
+        ))
+    model.add(Dense(do))
+    model.add(Activation('softmax'))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
 
 def build_stacked_lstm_dropout(dx,dh,do,length,weights=None):
     model=Sequential()

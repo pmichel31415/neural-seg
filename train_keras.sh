@@ -45,5 +45,5 @@ then
 fi
 
 mkdir $OUT
-python run_rnn.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -c $C -o $OUT -mt $MODEL -bs $BATCH_SIZE #-v
+python run_rnn.py -train $TRAIN -test $TEST -de $DI -dh $DH -optim $OPTIM -loss $LOSS -s $C -o $OUT -mt $MODEL -bs $BATCH_SIZE #-v
 

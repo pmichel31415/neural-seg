@@ -42,7 +42,7 @@ def check_valleys(x,i,threshold=1):
     ri=i+1
     while li>=0:
         if li-1<0 or x[li-1] > x[li]: #then this is a valley
-            left = abs(x[i]-x[li])>=threshold*np.mean(x)
+            left = abs(x[i]-x[li])>=threshold
             break
         li=li-1
     
@@ -75,6 +75,7 @@ def greedy_detect(x,times,num=5):
     return times[diffs]
 
 def baseline_like_detect(x,times,threshold=1):
+    x=1-np.exp(-x)
     potential_boundaries=argrelmax(x)[0]
     boundaries=[]
     for i,pb in enumerate(potential_boundaries):

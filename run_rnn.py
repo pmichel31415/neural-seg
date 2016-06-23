@@ -107,6 +107,7 @@ class StatefulDataGenerator:
         self.current_indexes=np.zeros(batch_size)
         self.n=len(data)
         self.batch_size=batch_size
+        self.span=span
         self.model=model
 
     def __iter__(self):
@@ -114,15 +115,15 @@ class StatefulDataGenerator:
 
     def next(self):
         for i in range(self.batch_size):
-            if self.current_indexes[i]+2>=len(self.files[self.current_files[i]]):
+            if self.current_indexes[i]+self.span+1>=len(self.files[self.current_files[i]]):
                 self.current_indexes[i]=0
                 self.current_files[i]=(self.current_files[i]+1) % self.n
                 if self.model is not None:
-                    self.model.reset_states()
-            else:
-                self.current_indexes[i]+=1
-        x=np.array([self.files[self.current_files[i]][self.current_indexes[i]].reshape(1,-1) for i in range(self.batch_size)])
-        y=np.array([self.files[self.current_files[i]][self.current_indexes[i]+1].reshape(1,-1) for i in range(self.batch_size)])
+                    self.model.reset_states()   
+        x=np.array([self.files[self.current_files[i]][self.current_indexes[i]:self.current_indexes[i]+self.span] for i in range(self.batch_size)])
+        y=np.array([self.files[self.current_files[i]][self.current_indexes[i]+self.span+1] for i in range(self.batch_size)])
+        
+        self.current_indexes[i]+=self.span
         return (x,y)
     def get(self):
         return self.next()
@@ -173,7 +174,7 @@ if __name__ == '__main__':
     else:
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
-    model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,weights,None,opt.batch_size)
+    model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,opt.span,weights,opt.batch_size)
     if opt.verbose:
         print(' Compiling model with ')
         print(' - optimizer : ' + opt.optim)
@@ -215,7 +216,7 @@ if __name__ == '__main__':
 
     print(len(train_data))
     batch_generator=StatefulDataGenerator(train_data,opt.span,opt.batch_size,model)
-    validation_generator=StatefulDataGenerator(valid_data,opt.span*2,opt.batch_size)
+    validation_generator=StatefulDataGenerator(valid_data,opt.span,opt.batch_size,model)
     print(next(batch_generator)[0].shape,next(batch_generator)[1].shape)
     model.fit_generator(
         batch_generator,
@@ -224,15 +225,22 @@ if __name__ == '__main__':
         validation_data=validation_generator,
         nb_val_samples=10,
         callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')],
-        verbose=2
+        verbose=1
         )
 
     
+
     if opt.verbose:
         print('----------------------------------------')
         print('       Running testing on corpus        ')
         print('----------------------------------------')
     
+    test_model = kmodels.build_test_lstm_softmax(opt.embed_dim,opt.hidden_dim,opt.embed_dim,model.get_weights())
+    test_model.compile(
+            optimizer=opt.optim,
+            loss=opt.loss#kmodels.last_mse
+            )
+
     test_files=[]
 
     with open(opt.test_list, 'r') as f:
@@ -251,19 +259,20 @@ if __name__ == '__main__':
         y=np.zeros((len(current_inputs),opt.embed_dim))
         loss=np.zeros(len(current_inputs))
         test_x=np.array(current_inputs[:-1])
-        test_x=test_x.reshape(len(test_x),1,-1)
+        test_x=test_x.reshape(1,len(test_x),-1)
         print(test_x.shape)
         test_y=current_inputs[1:]
 
-        res=model.predict(test_x,batch_size=1)
-        #y=model.predict_on_batch(test_x)
-        y[1:]=res.reshape(len(res),-1)
+        #res=test_model.predict(test_x,batch_size=1)
+        y[1:]=test_model.predict_on_batch(test_x)
+        #y[1:]=res.reshape(len(res),-1)
         print(y.shape) 
         
-        cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
+        #cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
         
         #loss[1:]=1-cosine
-        loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
+        #loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
+        loss=-(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
         
         print(y.shape,test_y.shape,loss.shape)
         out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
