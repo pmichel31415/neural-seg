@@ -11,277 +11,304 @@ import kmodels
 
 from keras.callbacks import EarlyStopping
 
-parser = argparse.ArgumentParser(
-    description='Neural speech segmentation')
-
-
-parser.add_argument('-train', '--train_data', action='store', dest='train_list',
-                    required=True,
-                    type=str, help='File listing training files locations')
-parser.add_argument('-test', '--test_data', action='store', dest='test_list',
-                    required=True,
-                    type=str, help='File listing test files locations')
-parser.add_argument('-m', '--model', action='store', dest='model',
-                    default=None,
-                    type=str, help='Previously saved model')
-parser.add_argument('-de', '--dim_embed', action='store', dest='embed_dim',
-                    default=39,
-                    type=int, help='Embedding dimension')
-parser.add_argument('-dh', '--dim_hidden', action='store', dest='hidden_dim',
-                    default=50,
-                    type=int, help='Hidden layer dimension')
-parser.add_argument('-s', '--span', action='store', dest='span',
-                    default=7,
-                    type=int, help='BPTT time span')
-parser.add_argument('-bs', '--batch_size', action='store', dest='batch_size',
-                    default=10,
-                    type=int, help='Batch size')
-parser.add_argument('-c', '--chunk', action='store', dest='chunk_size',
-                    default=6000,
-                    type=int, help='Chunks in which to divide the training files')
-parser.add_argument('-optim', '--optimizer', action='store', dest='optim',
-                    default='sgd',
-                    type=str, help='Optimizer')
-parser.add_argument('-loss', '--loss_function', action='store', dest='loss',
-                    default='mse',
-                    type=str, help='Loss function')
-parser.add_argument('-l', '--lr', action='store', dest='lr',
-                    default=0.01,
-                    type=float, help='Learning rate')
-parser.add_argument('-mt', '--model_type', action='store', dest='model_type',
-                    default='simple_rnn',
-                    type=str, help='Model type to be used')
-parser.add_argument('-o', '--out_dir', action='store', dest='out_dir',
-                    required=True,
-                    type=str, help='Output dir')
-parser.add_argument('-v', '--verbose', help='increase output verbosity',
-                    action='store_true')
-parser.add_argument('-nt', '--notrain', help='No training',
-                    action='store_true')
-parser.add_argument('-w', '--wav', help='Use wav files instead of mfcc',
-                    action='store_true')
 
 def load_features(filename):
     if filename.endswith('.npy'):
         feats = np.load(filename)
     else:
         feats = np.loadtxt(filename)
-    #feats=feats-np.mean(feats,axis=0)
-    #feats=feats/np.std(feats,axis=0)
+    # feats=feats-np.mean(feats,axis=0)
+    # feats=feats/np.std(feats,axis=0)
     return feats
+
 
 def load_wav(filename):
     if filename.endswith('.wav'):
         fs, x = wavread(filename)
         if fs != 8000:
-            x=resample(x,int(16000/fs*len(x)))
+            x = resample(x, int(16000/fs*len(x)))
         return x
     return np.array([])
 
-def save_model_weights(filename,model):
-    np.savez(filename,list(model.get_weights()))
+
+def save_model_weights(filename, model):
+    np.savez(filename, list(model.get_weights()))
+
 
 def load_model_weights(filename):
-    weights=np.load(filename)
-    weights=[weights[i] for i in range(weights.shape[0])]
+    weights = np.load(filename)
+    weights = [weights[i] for i in range(weights.shape[0])]
     return weights
 
-def prep_train(data,chunk_size=6000):
-    train_x=[]
-    train_y=[]
 
-    for i in range(0,len(data)-chunk_size):
-        end=min(len(data)-1,i+chunk_size)
+def prep_train(data, chunk_size=6000):
+    train_x = []
+    train_y = []
+
+    for i in range(0, len(data)-chunk_size):
+        end = min(len(data)-1, i+chunk_size)
         train_x.append(data[i:end])
         train_y.append(data[i+1:end+1])
 
-    train_x=np.array(train_x)
-    train_y=np.array(train_y)
-    return train_x,train_y
+    train_x = np.array(train_x)
+    train_y = np.array(train_y)
+    return train_x, train_y
+
 
 class StatefulDataGenerator:
-    def __init__(self, data, span, batch_size,model=None):
+
+    def __init__(self, data, span, batch_size, model=None):
         self.files = data
         np.random.shuffle(self.files)
-        self.current_files=np.random.randint(0,len(data),size=(batch_size))
-        self.current_indexes=np.zeros(batch_size)
-        self.n=len(data)
-        self.batch_size=batch_size
-        self.span=span
-        self.model=model
+        self.file = np.random.randint(0, len(data), size=(batch_size))
+        self.idxs = np.zeros(batch_size)
+        self.n = len(data)
+        self.batch_size = batch_size
+        self.span = span
+        self.model = model
 
     def __iter__(self):
         return self
 
     def next(self):
         for i in range(self.batch_size):
-            if self.current_indexes[i]+self.span+1>=len(self.files[self.current_files[i]]):
-                self.current_indexes[i]=0
-                self.current_files[i]=(self.current_files[i]+1) % self.n
+            if self.idxs[i]+self.span+1 >= len(self.files[self.file[i]]):
+                self.idxs[i] = 0
+                self.file[i] = (self.file[i]+1) % self.n
                 if self.model is not None:
-                    self.model.reset_states()   
-        x=np.array([self.files[self.current_files[i]][self.current_indexes[i]:self.current_indexes[i]+self.span] for i in range(self.batch_size)])
-        y=np.array([self.files[self.current_files[i]][self.current_indexes[i]+self.span+1] for i in range(self.batch_size)])
-        
-        self.current_indexes[i]+=self.span
-        return (x,y)
+                    self.model.reset_states()
+        x = np.array([
+            self.files[self.file[i]][self.idxs[i]:self.idxs[i]+self.span]
+            for i in range(self.batch_size)
+        ])
+        y = np.array([
+            self.files[self.file[i]][self.idxs[i]+self.span+1]
+            for i in range(self.batch_size)
+        ])
+
+        self.idxs[i] += self.span
+        return (x, y)
+
     def get(self):
         return self.next()
 
+
 class DataGenerator:
-    def __init__(self, data, span, batch_size):
+
+    def __init__(self, data, span, batch_size, model=None):
         self.data = data
-        self.n=len(data)
-        self.span=span
-        self.batch_size=batch_size
+        self.n = sum(len(f)-(span+1) for f in data)
+
+        self.instances = []
+        for i, f in enumerate(data):
+            for j in range(len(f)-span-1):
+                self.instances.append((i, j, j+span))
+
+        self.instances = np.array(self.instances)
+        self.idxs = np.array([
+            np.random.permutation(self.n)
+            for i in range(batch_size)
+        ])
+        self.span = span
+        self.batch_size = batch_size
+        self.i = 0
 
     def __iter__(self):
         return self
 
     def next(self):
-        batch_files=np.random.randint(0,self.n,size=(self.batch_size))
-        batch_idxs=np.array([np.random.randint(0,len(self.data[f])-self.span-1) for f in batch_files])
-        x=np.array([self.data[batch_files[i]][batch_idxs[i]:batch_idxs[i]+self.span] for i in range(self.batch_size)])
-        y=np.array([self.data[batch_files[i]][batch_idxs[i]+1:batch_idxs[i]+self.span+1] for i in range(self.batch_size)])
-        return (x,y)
+        x = np.array([
+            self.data[f][start:end]
+            for f, start, end in self.instances[self.idxs[self.i]]
+        ])
+        y = np.array([
+            self.data[f][end]
+            for f, start, end, in self.instances[self.idxs[self.i]]
+        ])
+        self.i = (self.i+1) % self.n
+        return (x, y)
+
     def get(self):
         return self.next()
 
-if __name__ == '__main__':
-    opt = parser.parse_args()
 
-    if opt.verbose:
+def train(
+    train_list,
+    train_model=None,
+    train_model_type='simple_rnn',
+    embed_dim=10,
+    hidden_dim=20,
+    optim='sgd',
+    loss='mse',
+    stateful=False,
+    span=40,
+    batch_size=128,
+    verbose=False
+):
+    '''
+    Runs the whole training/testing pipeline
+    '''
+    if verbose:
         print('----------------------------------------')
         print('            Creating model              ')
-        print(' - input dim :', opt.embed_dim)
-        print(' - hidden dim :', opt.hidden_dim)
-        print(' - output dim :', opt.embed_dim)
+        print(' - input dim :', embed_dim)
+        print(' - hidden dim :', hidden_dim)
+        print(' - output dim :', embed_dim)
         print('----------------------------------------')
 
-
-    weights=None
-    if opt.model is not None:
-        if opt.verbose:
+    weights = None
+    if train_model is not None:
+        if verbose:
             print(' Initializing model with custom weights ')
-            print(' - source :', os.path.basename(opt.model))
-        weights=load_model_weights(opt.model)
+            print(' - source :', os.path.basename(model))
+        weights = load_model_weights(train_model)
     else:
-        if opt.verbose:
+        if verbose:
             print(' Initializing model with random weights')
-    
-    if hasattr(kmodels,'build_' + opt.model_type):
-        build_model=getattr(kmodels,'build_' + opt.model_type)
+
+    if hasattr(kmodels, 'build_' + train_model_type):
+        build_model = getattr(kmodels, 'build_' + train_model_type)
     else:
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
-    model = build_model(opt.embed_dim,opt.hidden_dim,opt.embed_dim,opt.span,weights,opt.batch_size)
-    if opt.verbose:
+    model = build_model(
+        embed_dim, hidden_dim, embed_dim, span, weights, batch_size)
+    if verbose:
         print(' Compiling model with ')
-        print(' - optimizer : ' + opt.optim)
-        print(' - loss function : ' + opt.loss)
+        print(' - optimizer : ' + optim)
+        print(' - loss function : ' + loss)
     model.compile(
-            optimizer=opt.optim,
-            loss=opt.loss#kmodels.last_mse
-            )
-    
-    if opt.verbose:
+        optimizer=optim,
+        loss=loss  # kmodels.last_mse
+    )
+
+    if verbose:
         print('----------------------------------------')
         print('       Running training on corpus       ')
         print('----------------------------------------')
-    
-    train_files=[]
 
-    with open(opt.train_list, 'r') as f:
+    train_files = []
+
+    with open(train_list, 'r') as f:
         train_files = [l for l in f.read().split('\n') if l.endswith('.npy')]
-    train_data=[]
-    valid_data=[]
-    raw_data=[]
+    train_data = []
+    valid_data = []
+    raw_data = []
     for tf in train_files:
-        if opt.verbose:
+        if verbose:
             print('         Loading training file          ')
-            print(' - file :',tf)
+            print(' - file :', tf)
             print('----------------------------------------')
 
         current_inputs = load_features(tf)
-        if current_inputs.shape[1] != opt.embed_dim:
+        if current_inputs.shape[1] != embed_dim:
             print('Wrong input dim :', current_inputs.shape[1],
-                  ', expected', opt.embed_dim,
+                  ', expected', embed_dim,
                   'in file', f, ', skipping to next file.')
             continue
         raw_data.append(current_inputs)
     np.random.shuffle(raw_data)
-    valid_split=int(0.1*len(train_files))
-    valid_data=raw_data[:valid_split]
-    train_data=raw_data[valid_split:]
+    valid_split = int(0.1*len(train_files))
+    valid_data = raw_data[:valid_split]
+    train_data = raw_data[valid_split:]
 
-    print(len(train_data))
-    batch_generator=StatefulDataGenerator(train_data,opt.span,opt.batch_size,model)
-    validation_generator=StatefulDataGenerator(valid_data,opt.span,opt.batch_size,model)
-    print(next(batch_generator)[0].shape,next(batch_generator)[1].shape)
+    if stateful:
+        datagen = StatefulDataGenerator
+    else:
+        datagen = DataGenerator
+    batch_generator = datagen(train_data, span, batch_size, model)
+    validation_generator = datagen(valid_data, span, batch_size, model)
+    print(next(batch_generator)[0].shape, next(batch_generator)[1].shape)
     model.fit_generator(
         batch_generator,
-        sum(len(f)-opt.span for f in train_data)//2, # Sample per epoch
-        1000, # epoch
+        sum(len(f)-span for f in train_data)//2,  # Sample per epoch
+        1000,  # epoch
         validation_data=validation_generator,
         nb_val_samples=10,
-        callbacks=[EarlyStopping(monitor='val_loss', patience=0, verbose=1, mode='auto')],
+        callbacks=[
+            EarlyStopping(
+                monitor='val_loss',
+                patience=0,
+                verbose=1,
+                mode='auto'
+            )
+        ],
         verbose=1
-        )
+    )
 
-    
+    return model
 
-    if opt.verbose:
+
+def test(
+    test_list,
+    out_dir,
+    test_model=None,
+    test_model_type='simple_rnn',
+    embed_dim=10,
+    hidden_dim=20,
+    optim='sgd',
+    error='mse',
+    verbose=False
+):
+    if verbose:
         print('----------------------------------------')
         print('       Running testing on corpus        ')
         print('----------------------------------------')
-    
-    test_model = kmodels.build_test_lstm_softmax(opt.embed_dim,opt.hidden_dim,opt.embed_dim,model.get_weights())
+
+    if hasattr(kmodels, 'build_' + test_model_type):
+        build_model = getattr(kmodels, 'build_' + test_model_type)
+    else:
+        print('Unknown model type :/ you\'ll have to code it yourself')
+        exit()
+    test_model = build_model(
+        embed_dim, hidden_dim, embed_dim, model.get_weights())
     test_model.compile(
-            optimizer=opt.optim,
-            loss=opt.loss#kmodels.last_mse
-            )
+        optimizer=optim,
+        loss=error
+    )
 
-    test_files=[]
+    test_files = []
 
-    with open(opt.test_list, 'r') as f:
+    with open(test_list, 'r') as f:
         test_files = [l for l in f.read().split('\n') if l.endswith('.npy')]
-    
-    
-    for i,f in enumerate(test_files):
+
+    for i, f in enumerate(test_files):
         current_inputs = load_features(f)
-        if current_inputs.shape[1] != opt.embed_dim:
+        if current_inputs.shape[1] != embed_dim:
             print('Wrong input dim :', current_inputs.shape[1],
-                  ', expected', opt.embed_dim,
+                  ', expected', embed_dim,
                   'in file', f, ', skipping to next file.')
             continue
-        if opt.verbose:
-            print('Running through file',f,'(',i,'/',len(test_files),')')
-        y=np.zeros((len(current_inputs),opt.embed_dim))
-        loss=np.zeros(len(current_inputs))
-        test_x=np.array(current_inputs[:-1])
-        test_x=test_x.reshape(1,len(test_x),-1)
+        if verbose:
+            print('Running through file', f, '(', i, '/', len(test_files), ')')
+        y = np.zeros((len(current_inputs), embed_dim))
+        loss = np.zeros(len(current_inputs))
+        test_x = np.array(current_inputs[:-1])
+        test_x = test_x.reshape(1, len(test_x), -1)
         print(test_x.shape)
-        test_y=current_inputs[1:]
+        test_y = current_inputs[1:]
 
-        #res=test_model.predict(test_x,batch_size=1)
-        y[1:]=test_model.predict_on_batch(test_x)
-        #y[1:]=res.reshape(len(res),-1)
-        print(y.shape) 
-        
-        #cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
-        
-        #loss[1:]=1-cosine
-        #loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
-        loss=-(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
-        
-        print(y.shape,test_y.shape,loss.shape)
-        out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
-        np.save( opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.npy',y)
-        np.save(out_file,loss)
-    
-    if opt.verbose:
+        # res=test_model.predict(test_x,batch_size=1)
+        y[1:] = test_model.predict_on_batch(test_x)
+        # y[1:]=res.reshape(len(res),-1)
+        print(y.shape)
+
+        # cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
+
+        # loss[1:]=1-cosine
+        # loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
+        loss = -(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
+
+        print(y.shape, test_y.shape, loss.shape)
+        out_file = out_dir + '/' + \
+            os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
+        np.save(
+            out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.npy', y)
+        np.save(out_file, loss)
+
+    if verbose:
         print('----------------------------------------')
         print('      Testing over, dumping model       ')
         print('----------------------------------------')
 
-    save_model_weights(opt.out_dir+"/dump_model",model)
+    save_model_weights(out_dir+"/dump_model", model)
