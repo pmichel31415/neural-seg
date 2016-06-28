@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import os
 import argparse
+import json
 
 from scipy.io.wavfile import read as wavread
 from scipy.signal import resample
@@ -14,8 +15,15 @@ import post_process_rnn_error
 import run_rnn
 import preprocess
 import arguments
+from seg_eval import run_eval
 
 from keras.callbacks import EarlyStopping
+
+
+class Options:
+
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
 
 
 def make_features(wav_dir, mfcc_dir, energy=False, n=13):
@@ -30,11 +38,97 @@ def make_features(wav_dir, mfcc_dir, energy=False, n=13):
             np.save(mfcc_dir + '/' + f[:-3] + 'npy', m)
 
 
+def make_list(folder, out_file):
+    lst = [os.path.abspath(folder + '/' + f) for f in os.listdir(folder)]
+    np.savetxt(out_file, lst)
+
+
+def dir2lists(opt):
+    if not os.path.exists('splits'):
+        os.mkdir('splits')
+    if os.path.isdir(opt.train_list):
+        make_list(opt.train_list, 'splits/'+opt.name+'.lst')
+        opt.train_list = os.path.absname('splits/'+opt.name+'.lst')
+    if os.path.isdir(opt.test_list):
+        make_list(opt.test_list, 'splits/'+opt.name+'.lst')
+        opt.test_list = os.path.absname('splits/'+opt.name+'.lst')
+
+
+def summarize(opt):
+    tasks = set(opt.workflow.split('|'))
+
+    summary = 'Neural segmentation pipeline\n'
+    summary += 'Experiment : '+opt.name+'\n'
+    summary += 'Tasks executed : '+', '.join(opt.workflow.split('|'))+'\n'
+
+    if 'mfcc' in tasks:
+        summary += 'Made mfcc with parameters :\n'
+        summary += 'Wav dir : ' + opt.wav_dir + '\n'
+        summary += 'MFCC dir : ' + opt.mfcc_dir + '\n'
+        summary += 'With energy : ' + opt.mfcc_energy + '\n'
+        summary += 'Num cep : ' + opt.numcep + '\n'
+    if 'preprocess' in tasks:
+        summary += 'Preprocessing with parameters :\n'
+        summary += 'MFCC dir : ' + opt.mfcc_dir + '\n'
+        summary += 'States dir : ' + opt.states_dir + '\n'
+        summary += 'Method : ' + opt.preprocess_method + '\n'
+        if opt.preprocess_method in ['kmeans', 'partial_kmeans']:
+            summary += 'Number of clusters : ' + opt.num_clusters + '\n'
+        if opt.preprocess_method == 'partial_kmeans':
+            summary += 'Size of the subset : ' + opt.num_clusters + '\n'
+    if 'train' in tasks:
+        summary += 'Training with parameters :\n'
+        summary += 'Train list : ' + opt.train_list + '\n'
+        summary += 'Model type : ' + opt.train_model_type + '\n'
+        summary += 'Embedding dimension : ' + opt.embed_dim + '\n'
+        summary += 'Hidden dimension : ' + opt.hidden_dim + '\n'
+        summary += 'Optimization method : ' + opt.optim + '\n'
+        summary += 'Loss function : ' + opt.loss + '\n'
+        summary += 'BPTT span : ' + opt.span + '\n'
+        summary += 'Batch size : ' + opt.batch_size + '\n'
+        summary += 'Stateful : ' + opt.stateful + '\n'
+    if 'test' in tasks:
+        summary += 'Testing with parameters :\n'
+        summary += 'Test list : ' + opt.test_list + '\n'
+        summary += 'Output dir : ' + opt.out_dir + '\n'
+        summary += 'Model type : ' + opt.test_model_type + '\n'
+        summary += 'Embedding dimension : ' + opt.embed_dim + '\n'
+        summary += 'Hidden dimension : ' + opt.hidden_dim + '\n'
+        summary += 'Optimization method : ' + opt.optim + '\n'
+        summary += 'Error function : ' + opt.loss + '\n'
+    if 'postprocess' in tasks:
+        summary += 'Postprocessing with parameters :\n'
+        summary += 'Output dir dir : ' + opt.out_dir+'_syldet' + '\n'
+        summary += 'Method : ' + opt.postprocess_method + '\n'
+        if opt.time_dir is not None:
+            summary += 'Times directory : ' + opt.time_dir + '\n'
+        summary += 'Threshold : ' + opt.theshold + '\n'
+        if opt.preprocess_method == 'manual':
+            summary += 'Kernel size : ' + opt.ker_len + '\n'
+            summary += 'Clip limit : ' + opt.clip + '\n'
+    if 'eval' in tasks:
+        summary += 'Evaluation with parameters :\n'
+        summary += 'Gold dir : ' + opt.gold_dir + '\n'
+        summary += 'Result file : ' + 'This file dumbass' + '\n'
+        summary += 'Gap : ' + str(opt.gap) + '\n'
+
+    return summary
+
+
 if __name__ == '__main__':
-    opt = arguments.parser.parse_args()
+
+    opt = vars(arguments.parser.parse_args())
+
+    if opt['json'] is not None:
+        with open(opt['json']) as f:
+            opt.update(json.load(f))
+
+    opt = Options(**opt)
     tasks = set(opt.workflow.split('|'))
 
     model = None
+
+    dir2lists(opt)
 
     # Compute MFCC features from waveforms
     if 'mfcc' in tasks:
@@ -46,6 +140,7 @@ if __name__ == '__main__':
         )
     # Compute discrete states vector using clustering
     if 'preprocess' in tasks:
+
         preprocess.mfcc2states(
             opt.mfcc_dir,
             opt.states_dir,
@@ -61,10 +156,10 @@ if __name__ == '__main__':
             train_model_type=opt.train_model_type,
             embed_dim=opt.embed_dim,
             hidden_dim=opt.hidden_dim,
-            optim='sgd',
-            loss='mse',
-            span=40,
-            batch_size=128,
+            optim=opt.optim,
+            loss=opt.loss,
+            span=opt.span,
+            batch_size=opt.batch_size,
             stateful=opt.stateful,
             verbose=opt.verbose
         )
@@ -73,12 +168,12 @@ if __name__ == '__main__':
         run_rnn.test(
             opt.test_list,
             opt.out_dir,
-            test_model=model,
+            trained_model=model,
             test_model_type=opt.test_model_type,
             embed_dim=opt.embed_dim,
             hidden_dim=opt.hidden_dim,
             optim=opt.optim,
-            error=opt.mse,
+            error=opt.loss,
             verbose=opt.verbose
         )
     # Post processing
@@ -93,5 +188,13 @@ if __name__ == '__main__':
             clip=opt.clip,
             threshold=opt.threshold
         )
-
-
+    # Evaluation
+    if 'eval' in tasks:
+        run_eval.run(
+            opt.out_dir+'_syldet',
+            opt.gold_dir,
+            opt.
+            res_file,
+            gap=opt.gap,
+            summary=summarize(opt)
+        )

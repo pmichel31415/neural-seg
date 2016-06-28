@@ -4,6 +4,41 @@ parser = argparse.ArgumentParser(
     description='Neural speech segmentation'
 )
 
+###############################
+# General execution arguments #
+###############################
+
+parser.add_argument(
+    '-N', '--name',
+    action='store',
+    dest='name',
+    default=None,
+    type=str,
+    help='Name of the experiment'
+)
+parser.add_argument(
+    '-w', '--workflow',
+    action='store',
+    dest='workflow',
+    default='train|test|post_process|eval',
+    type=str,
+    help='Tasks that need to be run (any subset '
+    'of mfcc|preprocess|train|test|postprocess|eval)'
+)
+parser.add_argument(
+    '-v', '--verbose',
+    help='Increase output verbosity',
+    action='store_true'
+)
+parser.add_argument(
+    '-J', '--json',
+    action='store',
+    dest='json',
+    default=None,
+    type=str,
+    help='Json file containing parameters'
+)
+
 ######################################
 # Various directories and file lists #
 ######################################
@@ -12,7 +47,7 @@ parser.add_argument(
     '-train', '--train_data',
     action='store',
     dest='train_list',
-    required=True,
+    default=None,
     type=str,
     help='File listing training files locations'
 )
@@ -20,7 +55,7 @@ parser.add_argument(
     '-test', '--test_data',
     action='store',
     dest='test_list',
-    required=True,
+    default=None,
     type=str,
     help='File listing test files locations'
 )
@@ -57,10 +92,18 @@ parser.add_argument(
     help='Directory containing times files'
 )
 parser.add_argument(
+    '-gold', '--gold_dir',
+    action='store',
+    dest='gold_dir',
+    default=None,
+    type=str,
+    help='Directory containing gold boundaries files'
+)
+parser.add_argument(
     '-o', '--out_dir',
     action='store',
     dest='out_dir',
-    required=True,
+    default=None,
     type=str,
     help='Output dir'
 )
@@ -155,25 +198,6 @@ parser.add_argument(
     action='store_true'
 )
 
-###############################
-# General execution arguments #
-###############################
-
-parser.add_argument(
-    '-v', '--verbose',
-    help='Increase output verbosity',
-    action='store_true'
-)
-parser.add_argument(
-    '-w', '--workflow',
-    action='store',
-    dest='workflow',
-    default='train|test|post_process|eval',
-    type=str,
-    help='Tasks that need to be run (any subset '
-    'of mfcc|preprocess|train|test|postprocess|eval)'
-)
-
 ##############################
 # MFCC computation arguments #
 ##############################
@@ -252,10 +276,40 @@ parser.add_argument(
     help='Convolution kernel length'
 )
 parser.add_argument(
+    '-r', '--rate',
+    action='store',
+    dest='rate',
+    default=100.0,
+    type=float,
+    help='Features sampling rate'
+)
+parser.add_argument(
     '-C', '--clip',
     action='store',
     dest='clip',
     default=0,
     type=float,
     help='Clip limit'
+)
+
+########################
+# Evaluation arguments #
+########################
+
+parser.add_argument(
+    '-gap', '--gap',
+    action='store',
+    dest='gap',
+    default=0.02,
+    type=float,
+    help='Acceptable gap for evaluation'
+)
+
+parser.add_argument(
+    '-R', '--results',
+    action='store',
+    dest='res_file',
+    default='results.txt',
+    type=str,
+    help='Results file'
 )

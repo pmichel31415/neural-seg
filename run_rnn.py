@@ -77,6 +77,7 @@ class StatefulDataGenerator:
                 self.file[i] = (self.file[i]+1) % self.n
                 if self.model is not None:
                     self.model.reset_states()
+
         x = np.array([
             self.files[self.file[i]][self.idxs[i]:self.idxs[i]+self.span]
             for i in range(self.batch_size)
@@ -102,7 +103,7 @@ class DataGenerator:
         self.instances = []
         for i, f in enumerate(data):
             for j in range(len(f)-span-1):
-                self.instances.append((i, j, j+span))
+                self.instances.append([i, j, j+span])
 
         self.instances = np.array(self.instances)
         self.idxs = np.array([
@@ -119,11 +120,11 @@ class DataGenerator:
     def next(self):
         x = np.array([
             self.data[f][start:end]
-            for f, start, end in self.instances[self.idxs[self.i]]
+            for [f, start, end] in self.instances[self.idxs[:, self.i]]
         ])
         y = np.array([
             self.data[f][end]
-            for f, start, end, in self.instances[self.idxs[self.i]]
+            for [f, start, end] in self.instances[self.idxs[:, self.i]]
         ])
         self.i = (self.i+1) % self.n
         return (x, y)
@@ -242,7 +243,7 @@ def train(
 def test(
     test_list,
     out_dir,
-    test_model=None,
+    trained_model=None,
     test_model_type='simple_rnn',
     embed_dim=10,
     hidden_dim=20,
@@ -261,7 +262,7 @@ def test(
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
     test_model = build_model(
-        embed_dim, hidden_dim, embed_dim, model.get_weights())
+        embed_dim, hidden_dim, embed_dim, trained_model.get_weights())
     test_model.compile(
         optimizer=optim,
         loss=error
@@ -271,6 +272,9 @@ def test(
 
     with open(test_list, 'r') as f:
         test_files = [l for l in f.read().split('\n') if l.endswith('.npy')]
+
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
 
     for i, f in enumerate(test_files):
         current_inputs = load_features(f)
@@ -285,21 +289,21 @@ def test(
         loss = np.zeros(len(current_inputs))
         test_x = np.array(current_inputs[:-1])
         test_x = test_x.reshape(1, len(test_x), -1)
-        print(test_x.shape)
         test_y = current_inputs[1:]
 
-        # res=test_model.predict(test_x,batch_size=1)
         y[1:] = test_model.predict_on_batch(test_x)
-        # y[1:]=res.reshape(len(res),-1)
-        print(y.shape)
 
-        # cosine=np.sum(test_y*y[1:],axis=-1)/(np.linalg.norm(test_y,ord=2,axis=-1)*np.linalg.norm(y[1:],ord=2,axis=-1)+0.0001)
+        if error == 'mse':
+            loss = np.mean(np.square(y-current_inputs), axis=-1)
+        elif error == 'categorical_crossentropy':
+            loss = -(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
+        elif error == 'cosine_proximity':
+            dotprod = np.sum(current_inputs*y, axis=-1)
+            norm_y = np.linalg.norm(y[1:], ord=2, axis=-1)
+            norm_gold = np.linalg.norm(current_inputs, ord=2, axis=-1)
+            cosine = dotprod/(norm_y+norm_gold + 0.000001)
+            loss = 1-cosine
 
-        # loss[1:]=1-cosine
-        # loss[1:]=np.sqrt(np.mean(np.square(y[1:]-test_y),axis=-1))
-        loss = -(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
-
-        print(y.shape, test_y.shape, loss.shape)
         out_file = out_dir + '/' + \
             os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
         np.save(
@@ -311,4 +315,4 @@ def test(
         print('      Testing over, dumping model       ')
         print('----------------------------------------')
 
-    save_model_weights(out_dir+"/dump_model", model)
+    save_model_weights(out_dir+"/dump_model", test_model)

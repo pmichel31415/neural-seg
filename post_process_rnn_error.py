@@ -1,9 +1,10 @@
 #
 # Copyright 2016  ENS LSCP (Author: Paul Michel)
 #
-
+from __future__ import print_function, division
 
 import numpy as np
+import os
 from scipy.signal import convolve, argrelmax
 from scipy.fftpack import rfft, rfftfreq, irfft
 from peakdet import detect_peaks
@@ -152,7 +153,7 @@ def post_process_file(
     else:
         boundaries = fourier_detect(x, times, rate)
 
-    np.savetxt(opt.output_file, boundaries, fmt="%.3f")
+    np.savetxt(output_file, boundaries, fmt="%.3f")
 
 
 def run(
@@ -165,11 +166,13 @@ def run(
     clip=0.03,
     threshold=0.5
 ):
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     for f in os.listdir(input_dir):
         if f.endswith('_loss.npy'):
 
             ifile = input_dir+'/'+f
-            ofile = out_dir+'/'+f[:-9]+'.syldet'
+            ofile = output_dir+'/'+f[:-9]+'.syldet'
 
             if time_dir is not None:
                 tfile = time_dir + f[:-9]+'times'
@@ -179,10 +182,10 @@ def run(
             post_process_file(
                 ifile,
                 ofile,
-                method=postprocess_method,
+                method=method,
                 time_file=tfile,
                 rate=rate,
                 ker_len=ker_len,
                 clip=clip,
-                num=num
+                threshold=threshold
             )
