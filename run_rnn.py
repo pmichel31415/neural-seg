@@ -93,19 +93,22 @@ class StatefulDataGenerator:
     def get(self):
         return self.next()
 
+    def size():
+        return sum(len(f) for f in self.files)
 
 class DataGenerator:
 
     def __init__(self, data, span, batch_size, model=None):
         self.data = data
-        self.n = sum(len(f)-(span+1) for f in data)
 
         self.instances = []
         for i, f in enumerate(data):
             for j in range(len(f)-span-1):
-                self.instances.append([i, j, j+span])
+                if sum(data[i][j+span-1] * data[i][j+span])<0.0001:# or np.random.uniform() > 0.9:
+                    self.instances.append([i, j, j+span])
 
         self.instances = np.array(self.instances)
+        self.n = len(self.instances)
         self.idxs = np.array([
             np.random.permutation(self.n)
             for i in range(batch_size)
@@ -131,6 +134,9 @@ class DataGenerator:
 
     def get(self):
         return self.next()
+
+    def size(self):
+        return self.n
 
 
 def train(
@@ -222,7 +228,7 @@ def train(
     print(next(batch_generator)[0].shape, next(batch_generator)[1].shape)
     model.fit_generator(
         batch_generator,
-        sum(len(f)-span for f in train_data)//2,  # Sample per epoch
+        batch_generator.size(),  # Sample per epoch
         1000,  # epoch
         validation_data=validation_generator,
         nb_val_samples=10,
@@ -304,10 +310,8 @@ def test(
             cosine = dotprod/(norm_y+norm_gold + 0.000001)
             loss = 1-cosine
 
-        out_file = out_dir + '/' + \
-            os.path.splitext(f.split('/')[-1])[0] + '_loss.npy'
-        np.save(
-            out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.npy', y)
+        out_file = out_dir + '/' + os.path.basename(f)[:-4] + '_loss.npy'
+        np.save(out_dir + '/' + os.path.basename(f), y)
         np.save(out_file, loss)
 
     if verbose:

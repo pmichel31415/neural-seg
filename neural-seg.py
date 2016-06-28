@@ -40,18 +40,18 @@ def make_features(wav_dir, mfcc_dir, energy=False, n=13):
 
 def make_list(folder, out_file):
     lst = [os.path.abspath(folder + '/' + f) for f in os.listdir(folder)]
-    np.savetxt(out_file, lst)
+    np.savetxt(out_file, lst, fmt='%s')
 
 
 def dir2lists(opt):
     if not os.path.exists('splits'):
         os.mkdir('splits')
     if os.path.isdir(opt.train_list):
-        make_list(opt.train_list, 'splits/'+opt.name+'.lst')
-        opt.train_list = os.path.absname('splits/'+opt.name+'.lst')
+        make_list(opt.train_list, 'splits/'+opt.name+'_train.lst')
+        opt.train_list = os.path.abspath('splits/'+opt.name+'_train.lst')
     if os.path.isdir(opt.test_list):
-        make_list(opt.test_list, 'splits/'+opt.name+'.lst')
-        opt.test_list = os.path.absname('splits/'+opt.name+'.lst')
+        make_list(opt.test_list, 'splits/'+opt.name+'_test.lst')
+        opt.test_list = os.path.abspath('splits/'+opt.name+'_test.lst')
 
 
 def summarize(opt):
@@ -66,34 +66,34 @@ def summarize(opt):
         summary += 'Wav dir : ' + opt.wav_dir + '\n'
         summary += 'MFCC dir : ' + opt.mfcc_dir + '\n'
         summary += 'With energy : ' + opt.mfcc_energy + '\n'
-        summary += 'Num cep : ' + opt.numcep + '\n'
+        summary += 'Num cep : ' + str(opt.numcep) + '\n'
     if 'preprocess' in tasks:
         summary += 'Preprocessing with parameters :\n'
         summary += 'MFCC dir : ' + opt.mfcc_dir + '\n'
         summary += 'States dir : ' + opt.states_dir + '\n'
         summary += 'Method : ' + opt.preprocess_method + '\n'
         if opt.preprocess_method in ['kmeans', 'partial_kmeans']:
-            summary += 'Number of clusters : ' + opt.num_clusters + '\n'
+            summary += 'Number of clusters : ' + str(opt.num_clusters) + '\n'
         if opt.preprocess_method == 'partial_kmeans':
-            summary += 'Size of the subset : ' + opt.num_clusters + '\n'
+            summary += 'Size of the subset : ' + str(opt.num_clusters) + '\n'
     if 'train' in tasks:
         summary += 'Training with parameters :\n'
         summary += 'Train list : ' + opt.train_list + '\n'
         summary += 'Model type : ' + opt.train_model_type + '\n'
-        summary += 'Embedding dimension : ' + opt.embed_dim + '\n'
-        summary += 'Hidden dimension : ' + opt.hidden_dim + '\n'
+        summary += 'Embedding dimension : ' + str(opt.embed_dim) + '\n'
+        summary += 'Hidden dimension : ' + str(opt.hidden_dim) + '\n'
         summary += 'Optimization method : ' + opt.optim + '\n'
         summary += 'Loss function : ' + opt.loss + '\n'
-        summary += 'BPTT span : ' + opt.span + '\n'
-        summary += 'Batch size : ' + opt.batch_size + '\n'
-        summary += 'Stateful : ' + opt.stateful + '\n'
+        summary += 'BPTT span : ' + str(opt.span) + '\n'
+        summary += 'Batch size : ' + str(opt.batch_size) + '\n'
+        summary += 'Stateful : ' + str(opt.stateful) + '\n'
     if 'test' in tasks:
         summary += 'Testing with parameters :\n'
         summary += 'Test list : ' + opt.test_list + '\n'
         summary += 'Output dir : ' + opt.out_dir + '\n'
         summary += 'Model type : ' + opt.test_model_type + '\n'
-        summary += 'Embedding dimension : ' + opt.embed_dim + '\n'
-        summary += 'Hidden dimension : ' + opt.hidden_dim + '\n'
+        summary += 'Embedding dimension : ' + str(opt.embed_dim) + '\n'
+        summary += 'Hidden dimension : ' + str(opt.hidden_dim) + '\n'
         summary += 'Optimization method : ' + opt.optim + '\n'
         summary += 'Error function : ' + opt.loss + '\n'
     if 'postprocess' in tasks:
@@ -102,10 +102,10 @@ def summarize(opt):
         summary += 'Method : ' + opt.postprocess_method + '\n'
         if opt.time_dir is not None:
             summary += 'Times directory : ' + opt.time_dir + '\n'
-        summary += 'Threshold : ' + opt.theshold + '\n'
+        summary += 'Threshold : ' + str(opt.threshold) + '\n'
         if opt.preprocess_method == 'manual':
-            summary += 'Kernel size : ' + opt.ker_len + '\n'
-            summary += 'Clip limit : ' + opt.clip + '\n'
+            summary += 'Kernel size : ' + str(opt.ker_len) + '\n'
+            summary += 'Clip limit : ' + str(opt.clip) + '\n'
     if 'eval' in tasks:
         summary += 'Evaluation with parameters :\n'
         summary += 'Gold dir : ' + opt.gold_dir + '\n'
