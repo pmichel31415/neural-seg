@@ -170,7 +170,7 @@ def build_train_stacked_lstm_dropout_softmax(dx,dh,do,span=1,weights=None,batch_
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_dropout_softmax(dx,dh,do,weights=None):
+def build_test_stacked_lstm_dropout_softmax(dx,dh,do,weights=None):
     model=Sequential()
     model.add(LSTM(
         dh,

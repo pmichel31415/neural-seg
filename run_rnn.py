@@ -104,7 +104,7 @@ class DataGenerator:
         self.instances = []
         for i, f in enumerate(data):
             for j in range(len(f)-span-1):
-                if sum(data[i][j+span-1] * data[i][j+span])<0.0001:# or np.random.uniform() > 0.9:
+                if sum(data[i][j+span-1] * data[i][j+span])<0.0001 or np.random.uniform() > 0.8:
                     self.instances.append([i, j, j+span])
 
         self.instances = np.array(self.instances)
@@ -231,11 +231,11 @@ def train(
         batch_generator.size(),  # Sample per epoch
         1000,  # epoch
         validation_data=validation_generator,
-        nb_val_samples=10,
+        nb_val_samples=validation_generator.size(),
         callbacks=[
             EarlyStopping(
                 monitor='val_loss',
-                patience=0,
+                patience=2,
                 verbose=1,
                 mode='auto'
             )
