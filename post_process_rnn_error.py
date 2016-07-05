@@ -52,17 +52,18 @@ def greedy_detect(x, times, num=5):
     return times[diffs]
 
 
-def baseline_like_detect(x, times, threshold=1):
-    x = 1-np.exp(-x)
+def baseline_like_detect(x, times, threshold=1, min_threshold=1):
+    #x = 1-np.exp(-x)
     potential_boundaries = argrelmax(x)[0]
     boundaries = []
+    mean = np.mean(x[potential_boundaries])
     for i, pb in enumerate(potential_boundaries):
         if pb == 0 or pb == len(x):
             boundaries.append(pb)
             continue
 
-        # if x[pb]-x[pb-1] < x[pb]*0.1 or x[pb]-x[pb+1] < x[pb]*0.1:
-        #    continue
+        if x[pb] < min_threshold*mean:
+            continue
         if not check_valleys(x, pb, threshold):
             continue
         # j=upper_valley(pb,valleys)
@@ -128,7 +129,8 @@ def post_process_file(
     rate=100.0,
     ker_len=3,
     clip=0.03,
-    threshold=0.5
+    threshold=0.5,
+    min_threshold=1
 ):
     # Load error signal
     x = np.load(input_file)
@@ -145,7 +147,12 @@ def post_process_file(
     elif method == 'manual':
         boundaries = manual_detect(x, times, ker_len, clip, rate)
     elif method == 'baseline':
-        boundaries = baseline_like_detect(x, times, threshold=threshold)
+        boundaries = baseline_like_detect(
+            x,
+            times,
+            threshold=threshold,
+            min_threshold=min_threshold
+        )
     elif method == 'greedy':
         boundaries = greedy_detect(x, times, threshold)
     elif method == 'none':
@@ -153,7 +160,7 @@ def post_process_file(
     else:
         boundaries = fourier_detect(x, times, rate)
 
-    np.savetxt(output_file, boundaries, fmt="%.3f")
+    np.savetxt(output_file, boundaries, fmt="%.2f")
 
 
 def run(
@@ -164,7 +171,8 @@ def run(
     rate=100.0,
     ker_len=3,
     clip=0.03,
-    threshold=0.5
+    threshold=0.5,
+    min_threshold=1
 ):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -187,5 +195,6 @@ def run(
                 rate=rate,
                 ker_len=ker_len,
                 clip=clip,
-                threshold=threshold
+                threshold=threshold,
+                min_threshold=min_threshold
             )

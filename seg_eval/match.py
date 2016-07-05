@@ -27,7 +27,7 @@ def match_eval(bounds,gold,gap_threshold=0.02):
         else:
             diff=np.Inf
         if np.abs(diff)<=gap_threshold:
-            matches.append(bounds[i_bounds])
+            matches.append(gold[i_gold])
             i_bounds+=1
             i_gold+=1
         elif diff < -gap_threshold or i_gold==n_gold:

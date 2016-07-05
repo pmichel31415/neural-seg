@@ -96,6 +96,7 @@ class StatefulDataGenerator:
     def size():
         return sum(len(f) for f in self.files)
 
+
 class DataGenerator:
 
     def __init__(self, data, span, batch_size, model=None):
@@ -104,7 +105,9 @@ class DataGenerator:
         self.instances = []
         for i, f in enumerate(data):
             for j in range(len(f)-span-1):
-                if sum(data[i][j+span-1] * data[i][j+span])<0.0001 or np.random.uniform() > 0.8:
+                idx1 = np.argmax(data[i][j+span-1])
+                idx2 = np.argmax(data[i][j+span])
+                if idx1 != idx2 or np.random.uniform() > 0.8:
                     self.instances.append([i, j, j+span])
 
         self.instances = np.array(self.instances)
@@ -141,7 +144,8 @@ class DataGenerator:
 
 def train(
     train_list,
-    train_model=None,
+    out_dir,
+    train_model_weights=None,
     train_model_type='simple_rnn',
     embed_dim=10,
     hidden_dim=20,
@@ -163,12 +167,6 @@ def train(
         print(' - output dim :', embed_dim)
         print('----------------------------------------')
 
-    weights = None
-    if train_model is not None:
-        if verbose:
-            print(' Initializing model with custom weights ')
-            print(' - source :', os.path.basename(model))
-        weights = load_model_weights(train_model)
     else:
         if verbose:
             print(' Initializing model with random weights')
@@ -179,7 +177,13 @@ def train(
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
     model = build_model(
-        embed_dim, hidden_dim, embed_dim, span, weights, batch_size)
+        embed_dim,
+        hidden_dim,
+        embed_dim,
+        span,
+        train_model_weights,
+        batch_size
+    )
     if verbose:
         print(' Compiling model with ')
         print(' - optimizer : ' + optim)
@@ -235,7 +239,7 @@ def train(
         callbacks=[
             EarlyStopping(
                 monitor='val_loss',
-                patience=2,
+                patience=1,
                 verbose=1,
                 mode='auto'
             )
@@ -243,13 +247,15 @@ def train(
         verbose=1
     )
 
-    return model
+    save_model_weights(out_dir+"/dump_model", model)
+
+    return model.get_weights()
 
 
 def test(
     test_list,
     out_dir,
-    trained_model=None,
+    trained_model_weights=None,
     test_model_type='simple_rnn',
     embed_dim=10,
     hidden_dim=20,
@@ -268,11 +274,13 @@ def test(
         print('Unknown model type :/ you\'ll have to code it yourself')
         exit()
     test_model = build_model(
-        embed_dim, hidden_dim, embed_dim, trained_model.get_weights())
+        embed_dim, hidden_dim, embed_dim, trained_model_weights)
     test_model.compile(
         optimizer=optim,
         loss=error
     )
+
+    #get_hidden=kmodels.get_hidden(test_model)
 
     test_files = []
 
@@ -292,31 +300,28 @@ def test(
         if verbose:
             print('Running through file', f, '(', i, '/', len(test_files), ')')
         y = np.zeros((len(current_inputs), embed_dim))
+        hidden= np.zeros((len(current_inputs), hidden_dim))
         loss = np.zeros(len(current_inputs))
         test_x = np.array(current_inputs[:-1])
         test_x = test_x.reshape(1, len(test_x), -1)
         test_y = current_inputs[1:]
 
         y[1:] = test_model.predict_on_batch(test_x)
+        #hidden[1:] = get_hidden(test_x)
 
         if error == 'mse':
-            loss = np.mean(np.square(y-current_inputs), axis=-1)
+            loss = np.sqrt(np.sum(np.square(y-current_inputs), axis=-1))
         elif error == 'categorical_crossentropy':
-            loss = -(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
+            loss =-(current_inputs*np.log(y+0.0000001)).sum(axis=-1) # 1-(current_inputs*y).sum(axis=-1)
         elif error == 'cosine_proximity':
             dotprod = np.sum(current_inputs*y, axis=-1)
-            norm_y = np.linalg.norm(y[1:], ord=2, axis=-1)
+            norm_y = np.linalg.norm(y, ord=2, axis=-1)
             norm_gold = np.linalg.norm(current_inputs, ord=2, axis=-1)
             cosine = dotprod/(norm_y+norm_gold + 0.000001)
             loss = 1-cosine
 
         out_file = out_dir + '/' + os.path.basename(f)[:-4] + '_loss.npy'
+        hidden_file = out_dir + '/' + os.path.basename(f)[:-4] + '_hid.npy'
         np.save(out_dir + '/' + os.path.basename(f), y)
+        #np.save(hidden_file, hidden)
         np.save(out_file, loss)
-
-    if verbose:
-        print('----------------------------------------')
-        print('      Testing over, dumping model       ')
-        print('----------------------------------------')
-
-    save_model_weights(out_dir+"/dump_model", test_model)

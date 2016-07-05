@@ -12,105 +12,126 @@ from keras.layers.wrappers import TimeDistributed
 import theano
 import theano.tensor as T
 
-def build_feed_forward(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_feed_forward(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(TimeDistributed(Dense(
         dh,
         activation='sigmoid'
-        ),
-        input_shape=(1,dx)))
+    ),
+        input_shape=(1, dx)))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
 
-def build_simple_rnn(dx,dh,do,length,weights=None):
-    model=Sequential()
+def build_simple_rnn(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(SimpleRNN(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_simple_rnn_stateful(dx,dh,do,length,weights=None,batch_size=1):
-    model=Sequential()
+
+def build_simple_rnn_stateful(dx, dh, do, length, weights=None, batch_size=1):
+    model = Sequential()
     model.add(SimpleRNN(
         dh,
-        batch_input_shape=(batch_size,1,dx),
+        batch_input_shape=(batch_size, 1, dx),
         return_sequences=True,
         stateful=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_rnn(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_rnn(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(SimpleRNN(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(SimpleRNN(
         do,
         input_dim=dh,
         return_sequences=True,
-        ))
+    ))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_lstm(dx,dh,do,length,weights=None):
-    model=Sequential()
-    model.add(LSTM(
-        dh,
-        input_dim=dx,
-        return_sequences=True
-        ))
-    model.add(TimeDistributed(Dense(do)))
-    if weights is not None:
-        model.set_weights(weights)
-    return model
 
-def build_lstm_stateful(dx,dh,do,length,weights=None,batch_size=1):
-    model=Sequential()
-    model.add(LSTM(
-        dh,
-        batch_input_shape=(batch_size,1,dx),
-        return_sequences=True,
-        stateful=True
-        ))
-    model.add(TimeDistributed(Dense(do)))
-    if weights is not None:
-        model.set_weights(weights)
-    return model
-
-def build_train_lstm_softmax(dx,dh,do,span=1,weights=None,batch_size=2):
-    model=Sequential()
+def build_train_lstm_mse(dx, dh, do, span=1, weights=None, batch_size=2):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=False
-        ))
+    ))
+    model.add(Dense(do))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+
+def build_test_lstm_mse(dx, dh, do, weights=None):
+    model = Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True
+    ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        print(len(weights))
+        model.set_weights(weights)
+    return model
+
+
+def build_lstm_stateful(dx, dh, do, length, weights=None, batch_size=1):
+    model = Sequential()
+    model.add(LSTM(
+        dh,
+        batch_input_shape=(batch_size, 1, dx),
+        return_sequences=True,
+        stateful=True
+    ))
+    model.add(TimeDistributed(Dense(do)))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+
+def build_train_lstm_softmax(dx, dh, do, span=1, weights=None, batch_size=2):
+    model = Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=False
+    ))
     model.add(Dense(do))
     model.add(Activation('softmax'))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_test_lstm_softmax(dx,dh,do,weights=None):
-    model=Sequential()
+
+def build_test_lstm_softmax(dx, dh, do, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     model.add(TimeDistributed(Activation('softmax')))
     if weights is not None:
@@ -118,153 +139,161 @@ def build_test_lstm_softmax(dx,dh,do,weights=None):
     return model
 
 
-def build_lstm_stateful_softmax(dx,dh,do,length=1,weights=None,batch_size=1):
-    model=Sequential()
+def build_lstm_stateful_softmax(dx, dh, do, length=1, weights=None, batch_size=1):
+    model = Sequential()
     model.add(LSTM(
         dh,
-        batch_input_shape=(batch_size,length,dx),
+        batch_input_shape=(batch_size, length, dx),
         return_sequences=False,
         stateful=True
-        ))
+    ))
     model.add(Dense(do))
     model.add(Activation('softmax'))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_dropout_stateful_softmax(dx,dh,do,length=1,weights=None,batch_size=1):
-    model=Sequential()
+
+def build_stacked_lstm_dropout_stateful_softmax(dx, dh, do, length=1, weights=None, batch_size=1):
+    model = Sequential()
     model.add(LSTM(
         dh,
-        batch_input_shape=(batch_size,length,dx),
+        batch_input_shape=(batch_size, length, dx),
         return_sequences=True
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         dh,
-        batch_input_shape=(batch_size,length,dh),
+        batch_input_shape=(batch_size, length, dh),
         return_sequences=False
-        ))
+    ))
     model.add(Dense(do))
     model.add(Activation('softmax'))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_train_stacked_lstm_dropout_softmax(dx,dh,do,span=1,weights=None,batch_size=2):
-    model=Sequential()
+
+def build_train_stacked_lstm_dropout_softmax(dx, dh, do, span=1, weights=None, batch_size=2):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         dh,
         input_dim=dh,
         return_sequences=False
-        ))
+    ))
     model.add(Dense(do))
     model.add(Activation('softmax'))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_test_stacked_lstm_dropout_softmax(dx,dh,do,weights=None):
-    model=Sequential()
+
+def build_test_stacked_lstm_dropout_softmax(dx, dh, do, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         dh,
         input_dim=dh,
         return_sequences=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     model.add(TimeDistributed(Activation('softmax')))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_dropout(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_lstm_dropout(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         do,
         input_dim=dh,
         return_sequences=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_lstm(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
+    ))
     model.add(LSTM(
         do,
         input_dim=dh,
         return_sequences=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_stateful(dx,dh,do,length,weights=None,batch_size=5):
-    model=Sequential()
+
+def build_stacked_lstm_stateful(dx, dh, do, length, weights=None, batch_size=5):
+    model = Sequential()
     model.add(LSTM(
         dh,
-        batch_input_shape=(batch_size,1,dx),
+        batch_input_shape=(batch_size, 1, dx),
         return_sequences=True,
         stateful=True
-        ))
+    ))
     model.add(LSTM(
         do,
-        batch_input_shape=(batch_size,1,dh),
+        batch_input_shape=(batch_size, 1, dh),
         return_sequences=True,
         stateful=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_stateful_dropout(dx,dh,do,length,weights=None,batch_size=5):
-    model=Sequential()
+
+def build_stacked_lstm_stateful_dropout(dx, dh, do, length, weights=None, batch_size=5):
+    model = Sequential()
     model.add(LSTM(
         dh,
-        batch_input_shape=(batch_size,1,dx),
+        batch_input_shape=(batch_size, 1, dx),
         return_sequences=True,
         stateful=True
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         do,
-        batch_input_shape=(batch_size,1,dh),
+        batch_input_shape=(batch_size, 1, dh),
         return_sequences=True,
         stateful=True
-        ))
+    ))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_regularized(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_lstm_regularized(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
@@ -272,7 +301,7 @@ def build_stacked_lstm_regularized(dx,dh,do,length,weights=None):
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     model.add(LSTM(
         do,
         input_dim=dh,
@@ -281,13 +310,14 @@ def build_stacked_lstm_regularized(dx,dh,do,length,weights=None):
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_lstm_regularized_dropout(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
@@ -295,7 +325,7 @@ def build_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         do,
@@ -305,13 +335,14 @@ def build_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_stacked_lstm_regularized_dropout_batchnorm(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_stacked_lstm_regularized_dropout_batchnorm(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
@@ -319,7 +350,7 @@ def build_stacked_lstm_regularized_dropout_batchnorm(dx,dh,do,length,weights=Non
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     model.add(BatchNormalization())
     model.add(Dropout(0.2))
     model.add(LSTM(
@@ -330,13 +361,14 @@ def build_stacked_lstm_regularized_dropout_batchnorm(dx,dh,do,length,weights=Non
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def build_overkill_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None):
-    model=Sequential()
+
+def build_overkill_stacked_lstm_regularized_dropout(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(LSTM(
         dh,
         input_dim=dx,
@@ -344,7 +376,7 @@ def build_overkill_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         512,
@@ -353,7 +385,7 @@ def build_overkill_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     model.add(Dropout(0.2))
     model.add(LSTM(
         do,
@@ -363,39 +395,44 @@ def build_overkill_stacked_lstm_regularized_dropout(dx,dh,do,length,weights=None
         W_regularizer='l2',
         U_regularizer='l2',
         b_regularizer='l2'
-        ))
+    ))
     if weights is not None:
         model.set_weights(weights)
     return model
 
-def last_mse(y_true,y_pred):
-    yt=y_true[:,-1,:]
-    yp=y_pred[:,-1,:]
 
-    se=T.mean(T.square(yt-yp),axis=-1)
+def last_mse(y_true, y_pred):
+    yt = y_true[:, -1, :]
+    yp = y_pred[:, -1, :]
 
-    return se 
+    se = T.mean(T.square(yt-yp), axis=-1)
 
-def build_softmax_rnn(dx,dh,do,length,weights=None):
-    model=Sequential()
+    return se
+
+
+def get_hidden(model):
+    get_activations = theano.function(
+        [model.layers[0].input], model.layers[0].output, allow_input_downcast=True)
+    return get_activations
+
+
+def build_softmax_rnn(dx, dh, do, length, weights=None):
+    model = Sequential()
     model.add(SimpleRNN(
         dh,
         input_dim=dx,
         return_sequences=True
-        ))
-    model.add(TimeDistributed(Dense(do),activation='softmax'))
-    
+    ))
+    model.add(TimeDistributed(Dense(do), activation='softmax'))
+
     if weights is not None:
         model.set_weights(weights)
     return model
 
-# Set model
-build_model=build_lstm
 
 if __name__ == '__main__':
-    dummy_params= 10,15,5,0,None
+    dummy_params = 10, 15, 5, 0, None
     build_lstm(*dummy_params)
     build_simple_rnn(*dummy_params)
     build_softmax_rnn(*dummy_params)
     build_stacked_lstm_dropout(*dummy_params)
-

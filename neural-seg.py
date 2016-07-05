@@ -9,15 +9,11 @@ from scipy.io.wavfile import read as wavread
 from scipy.signal import resample
 from features import mfcc
 
-
-import kmodels
 import post_process_rnn_error
 import run_rnn
 import preprocess
 import arguments
 from seg_eval import run_eval
-
-from keras.callbacks import EarlyStopping
 
 
 class Options:
@@ -103,6 +99,7 @@ def summarize(opt):
         if opt.time_dir is not None:
             summary += 'Times directory : ' + opt.time_dir + '\n'
         summary += 'Threshold : ' + str(opt.threshold) + '\n'
+        summary += 'Min threshold : ' + str(opt.min_threshold) + '\n'
         if opt.preprocess_method == 'manual':
             summary += 'Kernel size : ' + str(opt.ker_len) + '\n'
             summary += 'Clip limit : ' + str(opt.clip) + '\n'
@@ -126,7 +123,10 @@ if __name__ == '__main__':
     opt = Options(**opt)
     tasks = set(opt.workflow.split('|'))
 
-    model = None
+    model_weights = None
+    if opt.model_weights is not None:
+        print(opt.model_weights)
+        model_weights = np.load(opt.model_weights).items()[0][1]
 
     dir2lists(opt)
 
@@ -150,9 +150,10 @@ if __name__ == '__main__':
         )
     # Train model
     if 'train' in tasks:
-        model = run_rnn.train(
+        model_weights = run_rnn.train(
             opt.train_list,
-            train_model=model,
+            opt.out_dir,
+            train_model_weights=model_weights,
             train_model_type=opt.train_model_type,
             embed_dim=opt.embed_dim,
             hidden_dim=opt.hidden_dim,
@@ -168,7 +169,7 @@ if __name__ == '__main__':
         run_rnn.test(
             opt.test_list,
             opt.out_dir,
-            trained_model=model,
+            trained_model_weights=model_weights,
             test_model_type=opt.test_model_type,
             embed_dim=opt.embed_dim,
             hidden_dim=opt.hidden_dim,
@@ -186,7 +187,8 @@ if __name__ == '__main__':
             rate=opt.rate,
             ker_len=opt.ker_len,
             clip=opt.clip,
-            threshold=opt.threshold
+            threshold=opt.threshold,
+            min_threshold=opt.min_threshold
         )
     # Evaluation
     if 'eval' in tasks:
@@ -196,5 +198,6 @@ if __name__ == '__main__':
             opt.
             res_file,
             gap=opt.gap,
-            summary=summarize(opt)
+            summary=summarize(opt),
+            remove_trailing_silences=opt.no_silences
         )

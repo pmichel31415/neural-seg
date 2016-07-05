@@ -36,7 +36,7 @@ def load_features(filename):
 def calculate_diff(mfcc,I):
     N=len(mfcc)
     diff=np.zeros(N)
-    diff[I:-I]=np.mean(np.square(sum(mfcc[n+I:N-I+n]*n for n in range(-I,I+1))/np.sum(np.arange(0,I+1)**2)),axis=1)
+    diff[I:-I]=np.mean(np.square(sum(mfcc[n+I:N-I+n]*n for n in range(-I,I+1))/np.sum(np.arange(-I,I+1)**2)),axis=1)
     #diff[I:-I]=np.mean(np.square(sum(mfcc[n+I:N-I+n]*np.arange(n+I,N-I+N) for n in range(-I,I+1))/sum(np.arange(n+I,N-I+N))))
     return diff
 
@@ -105,7 +105,7 @@ if __name__=='__main__':
             print('Processing file', f,'(',i+1,'/',len(input_files),')')
         current_inputs = load_features(f)
         diff=calculate_diff(current_inputs,opt.span)
-        np.savetxt(opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.loss',diff)
+        np.save(opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '_loss.npy',diff)
         boundaries=post_process(diff) / opt.rate
         out_file = opt.out_dir + '/' + os.path.splitext(f.split('/')[-1])[0] + '.syldet'
         np.savetxt(out_file,boundaries,fmt='%.2f')

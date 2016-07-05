@@ -113,12 +113,12 @@ parser.add_argument(
 #############################
 
 parser.add_argument(
-    '-m', '--model',
+    '-m', '--model_weights',
     action='store',
-    dest='model',
+    dest='model_weights',
     default=None,
     type=str,
-    help='Previously saved model'
+    help='Previously saved model weights (Must be compatible with the model type)'
 )
 parser.add_argument(
     '-de', '--dim_embed',
@@ -268,6 +268,14 @@ parser.add_argument(
     help='Peak detection threshold'
 )
 parser.add_argument(
+    '-min', '--min_per',
+    action='store',
+    dest='min_threshold',
+    default=0.5,
+    type=float,
+    help='Min percentage of the mean height'
+)
+parser.add_argument(
     '-K', '--kernel_len',
     action='store',
     dest='ker_len',
@@ -304,7 +312,11 @@ parser.add_argument(
     type=float,
     help='Acceptable gap for evaluation'
 )
-
+parser.add_argument(
+    '-ns', '--no_silences',
+    help='Exclude silences from evaluation',
+    action='store_true'
+)
 parser.add_argument(
     '-R', '--results',
     action='store',
