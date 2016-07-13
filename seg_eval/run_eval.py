@@ -22,6 +22,8 @@ def eval_file(
 
     gold = load.load_seg(gold_file)
     bounds = load.load_seg(bounds_file)
+    
+    gold=(gold*100).astype(int)/100
 
     if remove_trailing_silences:
         gold, bounds = remove_silences(gold, bounds, gap)
@@ -31,7 +33,7 @@ def eval_file(
     n_gold = len(gold)
 
     matches, deletions, insertions = match.match_eval(bounds, gold, gap)
-    np.savetxt(bounds_file[:-7]+'_matches.syldet', matches, fmt='%.3f')
+    #np.savetxt(bounds_file[:-7]+'_matches.syldet', matches, fmt='%.3f')
     n_matches = len(matches)
     n_deletions = len(deletions)
     n_insertions = len(insertions)
@@ -62,6 +64,7 @@ def run(
             eval_file(input_file, gold_file, gap, remove_trailing_silences))
 
     results = np.array(results).sum(axis=0)
+    print(gap)
     print(results)
     precision = results[0]/(results[1]+0.00000000001)
     recall = results[0]/results[2]

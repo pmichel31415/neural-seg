@@ -197,6 +197,11 @@ parser.add_argument(
     help='Use stateful training',
     action='store_true'
 )
+parser.add_argument(
+    '-sc', '--skip_constants',
+    help='Skip constant transitions',
+    action='store_true'
+)
 
 ##############################
 # MFCC computation arguments #

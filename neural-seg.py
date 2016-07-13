@@ -130,6 +130,9 @@ if __name__ == '__main__':
 
     dir2lists(opt)
 
+    if not os.path.exists(opt.out_dir):
+        os.mkdir(opt.out_dir)
+
     # Compute MFCC features from waveforms
     if 'mfcc' in tasks:
         make_features(
@@ -162,6 +165,7 @@ if __name__ == '__main__':
             span=opt.span,
             batch_size=opt.batch_size,
             stateful=opt.stateful,
+            skip_constants=opt.skip_constants,
             verbose=opt.verbose
         )
     # Test model

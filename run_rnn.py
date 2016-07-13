@@ -57,7 +57,14 @@ def prep_train(data, chunk_size=6000):
 
 class StatefulDataGenerator:
 
-    def __init__(self, data, span, batch_size, model=None):
+    def __init__(
+        self,
+        data,
+        span,
+        batch_size,
+        skip_constants=False,
+        model=None
+    ):
         self.files = data
         np.random.shuffle(self.files)
         self.file = np.random.randint(0, len(data), size=(batch_size))
@@ -99,7 +106,14 @@ class StatefulDataGenerator:
 
 class DataGenerator:
 
-    def __init__(self, data, span, batch_size, model=None):
+    def __init__(
+        self,
+        data,
+        span,
+        batch_size,
+        skip_constants=False,
+        model=None
+    ):
         self.data = data
 
         self.instances = []
@@ -107,7 +121,8 @@ class DataGenerator:
             for j in range(len(f)-span-1):
                 idx1 = np.argmax(data[i][j+span-1])
                 idx2 = np.argmax(data[i][j+span])
-                if idx1 != idx2 or np.random.uniform() > 0.8:
+                p = np.random.uniform()
+                if not skip_constants or idx1 != idx2 or p > 0.8:
                     self.instances.append([i, j, j+span])
 
         self.instances = np.array(self.instances)
@@ -154,6 +169,7 @@ def train(
     stateful=False,
     span=40,
     batch_size=128,
+    skip_constants=False,
     verbose=False
 ):
     '''
@@ -227,7 +243,13 @@ def train(
         datagen = StatefulDataGenerator
     else:
         datagen = DataGenerator
-    batch_generator = datagen(train_data, span, batch_size, model)
+    batch_generator = datagen(
+        train_data,
+        span,
+        batch_size,
+        skip_constants,
+        model
+    )
     validation_generator = datagen(valid_data, span, batch_size, model)
     print(next(batch_generator)[0].shape, next(batch_generator)[1].shape)
     model.fit_generator(
@@ -239,7 +261,7 @@ def train(
         callbacks=[
             EarlyStopping(
                 monitor='val_loss',
-                patience=1,
+                patience=30,
                 verbose=1,
                 mode='auto'
             )
@@ -280,7 +302,7 @@ def test(
         loss=error
     )
 
-    #get_hidden=kmodels.get_hidden(test_model)
+    # get_hidden=kmodels.get_hidden(test_model)
 
     test_files = []
 
@@ -300,7 +322,7 @@ def test(
         if verbose:
             print('Running through file', f, '(', i, '/', len(test_files), ')')
         y = np.zeros((len(current_inputs), embed_dim))
-        hidden= np.zeros((len(current_inputs), hidden_dim))
+        hidden = np.zeros((len(current_inputs), hidden_dim))
         loss = np.zeros(len(current_inputs))
         test_x = np.array(current_inputs[:-1])
         test_x = test_x.reshape(1, len(test_x), -1)
@@ -312,7 +334,8 @@ def test(
         if error == 'mse':
             loss = np.sqrt(np.sum(np.square(y-current_inputs), axis=-1))
         elif error == 'categorical_crossentropy':
-            loss =-(current_inputs*np.log(y+0.0000001)).sum(axis=-1) # 1-(current_inputs*y).sum(axis=-1)
+            # 1-(current_inputs*y).sum(axis=-1)
+            loss = -(current_inputs*np.log(y+0.0000001)).sum(axis=-1)
         elif error == 'cosine_proximity':
             dotprod = np.sum(current_inputs*y, axis=-1)
             norm_y = np.linalg.norm(y, ord=2, axis=-1)
