@@ -255,13 +255,13 @@ def train(
     model.fit_generator(
         batch_generator,
         batch_generator.size(),  # Sample per epoch
-        1000,  # epoch
+        2,  # epoch
         validation_data=validation_generator,
         nb_val_samples=validation_generator.size(),
         callbacks=[
             EarlyStopping(
                 monitor='val_loss',
-                patience=30,
+                patience=1,
                 verbose=1,
                 mode='auto'
             )

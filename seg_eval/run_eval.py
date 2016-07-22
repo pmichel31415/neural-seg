@@ -35,8 +35,8 @@ def eval_file(
     matches, deletions, insertions = match.match_eval(bounds, gold, gap)
     #np.savetxt(bounds_file[:-7]+'_matches.syldet', matches, fmt='%.3f')
     n_matches = len(matches)
-    n_deletions = len(deletions)
-    n_insertions = len(insertions)
+    #n_deletions = len(deletions)
+    #n_insertions = len(insertions)
 
     return [n_matches, n_bounds, n_gold]
 
