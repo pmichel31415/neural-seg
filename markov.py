@@ -5,8 +5,8 @@ import os
 import argparse
 
 train_dir = '../../resources/TIMIT/kmeans_states_8_train'
-test_dir = '../../resources/TIMIT/kmeans_states_8_test'
-out_dir = 'output/markov'
+test_dir = '../../resources/TIMIT/kmeans_states_8_train'
+out_dir = 'output/timit_markov_train'
 
 if not os.path.exists(out_dir):
         os.mkdir(out_dir)
@@ -33,3 +33,6 @@ for f in os.listdir(test_dir):
         for i in range(k, len(x)):
             y[i] = np.sum(nstats[x[i], range(k), x[i-k:i]])
         np.save(out_dir+'/'+f[:-4]+'_loss.npy',- np.log(y))
+
+np.save('markov_model',nstats)
+np.save('probs',prob)

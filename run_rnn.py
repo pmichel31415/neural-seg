@@ -100,7 +100,7 @@ class StatefulDataGenerator:
     def get(self):
         return self.next()
 
-    def size():
+    def size(self):
         return sum(len(f) for f in self.files)
 
 
@@ -340,7 +340,7 @@ def test(
             dotprod = np.sum(current_inputs*y, axis=-1)
             norm_y = np.linalg.norm(y, ord=2, axis=-1)
             norm_gold = np.linalg.norm(current_inputs, ord=2, axis=-1)
-            cosine = dotprod/(norm_y+norm_gold + 0.000001)
+            cosine = dotprod/(norm_y*norm_gold + 0.000001)
             loss = 1-cosine
 
         out_file = out_dir + '/' + os.path.basename(f)[:-4] + '_loss.npy'

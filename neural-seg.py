@@ -31,6 +31,9 @@ def make_features(wav_dir, mfcc_dir, energy=False, n=13):
         if f.endswith('.wav'):
             fs, w = wavread(wav_dir + '/' + f)
             m = mfcc(w, samplerate=fs, appendEnergy=energy, numcep=n)
+            mean=m.mean(axis=0)
+            std=m.std(axis=0)
+            m=(m-mean)/std
             np.save(mfcc_dir + '/' + f[:-3] + 'npy', m)
 
 
@@ -203,5 +206,6 @@ if __name__ == '__main__':
             res_file,
             gap=opt.gap,
             summary=summarize(opt),
-            remove_trailing_silences=opt.no_silences
+            remove_trailing_silences=opt.no_silences,
+            verbose=opt.verbose
         )

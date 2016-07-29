@@ -7,10 +7,18 @@ import match
 
 
 def remove_silences(gold, bounds, gap):
-    inf, sup = gold[1], gold[-2]
-    bounds = [b for b in bounds if b >= inf-gap and b <= sup+gap]
+    # inf, sup = gold[1], gold[-2]
+    # bounds = [b for b in bounds if b >= inf-gap and b <= sup+gap]
+    # bounds.sort()
     gold = gold[1:-1]
     return gold, bounds
+
+
+def rvalue(p, r):
+    r1 = np.sqrt((1-r)**2+(r/p-1)**2)
+    r2 = (-(r/p-1)+r-1)/np.sqrt(2)
+    R = 1-(np.abs(r1)+np.abs(r2))/2
+    return R
 
 
 def eval_file(
@@ -22,8 +30,8 @@ def eval_file(
 
     gold = load.load_seg(gold_file)
     bounds = load.load_seg(bounds_file)
-    
-    gold=(gold*100).astype(int)/100
+
+    gold = (gold*100).astype(int)/100
 
     if remove_trailing_silences:
         gold, bounds = remove_silences(gold, bounds, gap)
@@ -47,7 +55,8 @@ def run(
     out_file,
     gap=0.02,
     summary='',
-    remove_trailing_silences=False
+    remove_trailing_silences=False,
+    verbose=False
 ):
     results = []
     for f in os.listdir(bounds_dir):
@@ -64,20 +73,23 @@ def run(
             eval_file(input_file, gold_file, gap, remove_trailing_silences))
 
     results = np.array(results).sum(axis=0)
-    print(gap)
-    print(results)
     precision = results[0]/(results[1]+0.00000000001)
     recall = results[0]/results[2]
     F_1 = 2*precision*recall/(precision+recall)
-
+    r = rvalue(precision, recall)
+    print(results)
+    print(precision, recall, F_1, r)
     # mean_prec = np.mean(precision)
     # mean_recall = np.mean(recall)
     # mean_F1 = np.mean(F_1)
 
     with open(out_file, 'w+') as f:
-        f.write(summary)
-        f.write('Results :')
-        f.write('\n Precision %.3f' % precision)
-        f.write('\n Recall %.3f' % recall)
-        f.write('\n F-score %.3f' % F_1)
-        f.write('\n')
+        if verbose:
+            f.write(summary)
+            f.write('Results :')
+            f.write('\n Precision %.3f' % precision)
+            f.write('\n Recall %.3f' % recall)
+            f.write('\n F-score %.3f' % F_1)
+            f.write('\n')
+        else:
+            f.write('%.3f, %.3f, %.3f, %.3f' % (precision, recall, F_1, r))

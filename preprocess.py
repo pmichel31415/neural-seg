@@ -3,7 +3,8 @@ from __future__ import print_function, division
 import numpy as np
 import argparse
 import os
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.mixture import GMM
 
 from sklearn.base import BaseEstimator, ClusterMixin
 
@@ -113,6 +114,10 @@ def mfcc2states(mfcc_dir, out_dir, num_clusters=8, method='random', subset_size=
         model = RandomCluster(n_clusters=num_clusters)
     elif method == 'kmeans':
         model = KMeans(n_clusters=num_clusters)
+    elif method == 'agglo':
+        model = AgglomerativeClustering(n_clusters=num_clusters,memory='tmp')
+    elif method == 'gmm':
+        model = GMM(n_components=num_clusters)
     elif method == 'partial_kmeans':
         model = SemiKMeansCluster(
             n_clusters=num_clusters, size_subset=subset_size)

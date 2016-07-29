@@ -15,18 +15,26 @@ import theano.tensor as T
 
 def build_feed_forward(dx, dh, do, length, weights=None):
     model = Sequential()
-    model.add(TimeDistributed(Dense(
-        dh,
-        activation='sigmoid'
-    ),
-        input_shape=(1, dx)))
     model.add(TimeDistributed(Dense(do)))
     if weights is not None:
         model.set_weights(weights)
     return model
 
 
-def build_simple_rnn(dx, dh, do, length, weights=None):
+def build_train_rnn_mse(dx, dh, do, span=1, weights=None, batch_size=2):
+    model = Sequential()
+    model.add(SimpleRNN(
+        dh,
+        input_dim=dx,
+        return_sequences=False
+    ))
+    model.add(Dense(do))
+    
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def build_test_rnn_mse(dx, dh, do, weights=None):
     model = Sequential()
     model.add(SimpleRNN(
         dh,
@@ -37,7 +45,6 @@ def build_simple_rnn(dx, dh, do, length, weights=None):
     if weights is not None:
         model.set_weights(weights)
     return model
-
 
 def build_simple_rnn_stateful(dx, dh, do, length, weights=None, batch_size=1):
     model = Sequential()
@@ -214,7 +221,25 @@ def build_test_stacked_lstm_dropout_softmax(dx, dh, do, weights=None):
     return model
 
 
-def build_stacked_lstm_dropout(dx, dh, do, length, weights=None):
+def build_train_stacked_lstm_dropout_mse(dx, dh, do, span=1, weights=None, batch_size=2):
+    model = Sequential()
+    model.add(LSTM(
+        dh,
+        input_dim=dx,
+        return_sequences=True
+    ))
+    model.add(Dropout(0.2))
+    model.add(LSTM(
+        do,
+        input_dim=dh,
+        return_sequences=False
+    ))
+    model.add(Dense(do))
+    if weights is not None:
+        model.set_weights(weights)
+    return model
+
+def build_test_stacked_lstm_dropout_mse(dx, dh, do, length, weights=None):
     model = Sequential()
     model.add(LSTM(
         dh,
@@ -231,7 +256,6 @@ def build_stacked_lstm_dropout(dx, dh, do, length, weights=None):
     if weights is not None:
         model.set_weights(weights)
     return model
-
 
 def build_stacked_lstm(dx, dh, do, length, weights=None):
     model = Sequential()
@@ -251,7 +275,7 @@ def build_stacked_lstm(dx, dh, do, length, weights=None):
     return model
 
 
-def build_stacked_lstm_stateful(dx, dh, do, length, weights=None, batch_size=5):
+def build_stacked_lstm_mse_stateful(dx, dh, do, length, weights=None, batch_size=5):
     model = Sequential()
     model.add(LSTM(
         dh,
@@ -271,7 +295,7 @@ def build_stacked_lstm_stateful(dx, dh, do, length, weights=None, batch_size=5):
     return model
 
 
-def build_stacked_lstm_stateful_dropout(dx, dh, do, length, weights=None, batch_size=5):
+def build_stacked_lstm_mse_stateful_dropout(dx, dh, do, length, weights=None, batch_size=5):
     model = Sequential()
     model.add(LSTM(
         dh,
@@ -283,10 +307,10 @@ def build_stacked_lstm_stateful_dropout(dx, dh, do, length, weights=None, batch_
     model.add(LSTM(
         do,
         batch_input_shape=(batch_size, 1, dh),
-        return_sequences=True,
+        return_sequences=False,
         stateful=True
     ))
-    model.add(TimeDistributed(Dense(do)))
+    model.add(Dense(do))
     if weights is not None:
         model.set_weights(weights)
     return model

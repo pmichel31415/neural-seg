@@ -136,6 +136,10 @@ def post_process_file(
     x = np.load(input_file)
     x = x.reshape(x.size)
 
+    # Flatten beginning
+
+    x[:7]=0
+
     times = np.arange(len(x))/rate
     if time_file is not None:
         times = np.loadtxt(time_file)
@@ -159,7 +163,11 @@ def post_process_file(
         boundaries = times[argrelmax(x)[0]]
     else:
         boundaries = fourier_detect(x, times, rate)
-
+    boundaries=list(boundaries)
+    if not (len(x)-1)/rate in boundaries:
+        boundaries.append((len(x)-1)/rate)
+    if not 0 in boundaries:
+        boundaries=[0]+boundaries
     np.savetxt(output_file, boundaries, fmt="%.2f")
 
 
